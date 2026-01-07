@@ -312,16 +312,66 @@ just validate-native
 
 ### Creating Releases
 
-Releases are created manually by maintainers via GitHub Actions:
+Production releases are created manually by maintainers via GitHub Actions from the `main` branch:
 
 1. Ensure `VERSION` and `CHANGELOG.md` are updated on `main`
 2. Go to **Actions** → **Release** → **Run workflow**
-3. (Optional) Enable "Dry run" to preview without creating
-4. Click **Run workflow**
+3. Ensure "main" is selected as the branch
+4. (Optional) Enable "Dry run" to preview without creating
+5. Click **Run workflow**
+
+The workflow will fail if triggered from any branch other than `main`.
 
 The release will:
 - Create a git tag matching the VERSION (e.g., `v0.2.0`)
 - Auto-populate release notes from CHANGELOG.md
+- Publish packages to production Cloudsmith registries
+- Upload YAML config as release asset
+
+### Development Releases
+
+Development releases can be manually triggered from the `development` branch for pre-production testing.
+
+**Key Differences:**
+- **Version**: `{VERSION}-development-{SHA}` (e.g., `0.2.0-development-abc1234`)
+- **Trigger**: Manual via GitHub Actions (from `development` branch only)
+- **Registries**: Separate dev registries (`robotops-config-rust-dev`, `robotops-config-cpp-dev`)
+- **GitHub**: Marked as pre-release
+- **Purpose**: Testing only - not for production
+
+**Creating a Dev Release:**
+
+1. Merge your feature to `development` and push to GitHub
+2. Go to **Actions** → **Development Release** → **Run workflow**
+3. Select "development" from the branch dropdown
+4. Click **Run workflow**
+
+The workflow will fail if triggered from any branch other than `development`.
+
+**Using Dev Packages:**
+
+```toml
+# Rust: Add to ~/.cargo/config.toml
+[registries.cloudsmith-dev]
+index = "sparse+https://dl.cloudsmith.io/basic/robotopsinc/robotops-config-rust-dev/cargo/index.git"
+
+# Then in Cargo.toml
+[dependencies]
+robotops-config = { version = "0.2.0-development-abc1234", registry = "cloudsmith-dev" }
+```
+
+```bash
+# C++
+conan remote add cloudsmith-dev \
+  https://api.cloudsmith.io/conan/robotopsinc/robotops-config-cpp-dev/
+conan install --requires=robotops-config/0.2.0-development-abc1234@
+```
+
+```bash
+# YAML Config
+curl -L -o config.yaml \
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0-development-abc1234/config.yaml
+```
 
 ## Maintenance
 

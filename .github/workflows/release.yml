@@ -2,6 +2,7 @@ name: Release
 
 on:
   workflow_dispatch:
+    # Manual trigger only - production releases from main branch only
     inputs:
       dry_run:
         description: 'Dry run (validate without creating release)'
@@ -15,6 +16,15 @@ jobs:
       contents: write  # Needed to create releases and tags
     steps:
       - uses: actions/checkout@v4
+
+      - name: Ensure release is from main branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "::error::Production releases can only be created from the main branch"
+            echo "Current branch: ${{ github.ref }}"
+            echo "Use the 'Development Release' workflow for pre-releases from other branches"
+            exit 1
+          fi
 
       - name: Get version from VERSION file
         id: version
