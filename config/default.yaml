@@ -10,7 +10,7 @@
 # - MAJOR: Breaking changes (field removal, type changes, required fields)
 # - MINOR: New optional fields (backward compatible)
 # - PATCH: Documentation or default value changes
-schema_version: "0.1.1"
+schema_version: "0.2.0"
 
 # ===== ROBOT IDENTITY =====
 #

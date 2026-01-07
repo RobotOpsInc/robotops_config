@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+# Install Python and pip
+RUN apk add --no-cache python3 py3-pip
+
+# Install validation tools
+RUN npm install -g ajv-cli && \
+    pip3 install --break-system-packages yamllint
+
+WORKDIR /workspace
+
+# Default command runs all validations
+CMD ["sh", "-c", "echo 'Running validations...' && \
+    ajv validate -s schema/config.schema.json -d config/default.yaml && \
+    ajv validate -s schema/config.schema.json -d config/minimal.yaml && \
+    for f in config/examples/*.yaml; do ajv validate -s schema/config.schema.json -d \"$f\"; done && \
+    yamllint config/"]

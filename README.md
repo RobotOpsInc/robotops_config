@@ -34,11 +34,11 @@ Download the latest configuration directly:
 sudo mkdir -p /etc/robotops
 
 # Download latest config from main branch
-curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops-config/main/config/default.yaml \
+curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops_config/main/config/default.yaml \
   | sudo tee /etc/robotops/config.yaml > /dev/null
 
 # Or download a specific version
-curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops-config/v1.0.0/config/default.yaml \
+curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops_config/v1.0.0/config/default.yaml \
   | sudo tee /etc/robotops/config.yaml > /dev/null
 ```
 
@@ -50,7 +50,7 @@ In automated pipelines, download the config as needed:
 - name: Download RobotOps config
   run: |
     mkdir -p config
-    curl -LO https://raw.githubusercontent.com/RobotOpsInc/robotops-config/v1.0.0/config/default.yaml
+    curl -LO https://raw.githubusercontent.com/RobotOpsInc/robotops_config/v1.0.0/config/default.yaml
 ```
 
 ## Usage
@@ -117,6 +117,45 @@ robotops_config v2.0.0   ←  Breaking change: all components bump major version
 ```
 
 **Recommendation:** Always reference a specific version tag in production deployments for stability.
+
+## Development
+
+### Versioning Workflow
+
+This repository uses a `VERSION` file as the single source of truth for the schema version.
+
+**Bumping versions:**
+
+```bash
+# Install just (https://just.systems)
+brew install just  # or: cargo install just
+
+# Bump version (updates VERSION, all config files, and CHANGELOG)
+just bump-version patch  # or: minor, major
+```
+
+**Validation:**
+
+```bash
+# Run all validations (schema, versions, linting) via Docker
+just validate
+
+# Or run natively (requires ajv-cli and yamllint)
+just validate-native
+```
+
+### Creating Releases
+
+Releases are created manually by maintainers via GitHub Actions:
+
+1. Ensure `VERSION` and `CHANGELOG.md` are updated on `main`
+2. Go to **Actions** → **Release** → **Run workflow**
+3. (Optional) Enable "Dry run" to preview without creating
+4. Click **Run workflow**
+
+The release will:
+- Create a git tag matching the VERSION (e.g., `v0.2.0`)
+- Auto-populate release notes from CHANGELOG.md
 
 ## Maintenance
 

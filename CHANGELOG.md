@@ -5,11 +5,22 @@ All notable changes to the RobotOps configuration will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-01-06
+<!-- Versions below this line -->
+
+## [0.2.0] - 2026-01-07
+
+### Changed
+
+- Versioning process and validations. Schema unchanged.
+- Added VERSION file as single source of truth
+- `just validate` enforces in CI that version must be bumped if changes are made to yaml files or schema
+- `just bump-version [major|minor|patch]` now available to increment version and auto gen changelog entry
+
+## [0.1.1] - 2026-01-06
 
 ### Added
 
-- Initial release of robotops-config repository
+- Initial release of robotops_config repository
 - Configuration schema version field (`schema_version`)
 - Comprehensive distributed tracing configuration (`tracing:` section)
   - Master enable switch with underlying RMW selection
@@ -46,4 +57,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration reference covering all options
 - Environment variable override documentation
 
-[1.0.0]: https://github.com/RobotOpsInc/robotops-config/releases/tag/v1.0.0
+[0.1.1]: https://github.com/RobotOpsInc/robotops_config/releases/tag/v0.1.1
