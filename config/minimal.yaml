@@ -3,7 +3,7 @@
 # This is the minimal valid configuration for rmw_robotops and robot_agent.
 # Only the essential fields are specified; all other options use defaults.
 
-schema_version: "0.1.1"
+schema_version: "0.2.0"
 
 tracing:
   enabled: true
