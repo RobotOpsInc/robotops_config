@@ -17,9 +17,13 @@ jobs:
       - name: Buf lint
         run: buf lint
 
-      - name: Buf breaking (check against main)
+      - name: Buf breaking (check against base branch)
         if: github.event_name == 'pull_request'
-        run: buf breaking --against 'https://github.com/RobotOpsInc/robotops_config.git#branch=main'
+        run: |
+          # Check against the PR's base branch (e.g., main or development)
+          BASE_BRANCH="${{ github.base_ref }}"
+          echo "Checking for breaking changes against branch: $BASE_BRANCH"
+          buf breaking --against "https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH"
 
   proto-generate:
     runs-on: ubuntu-latest
