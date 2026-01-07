@@ -12,7 +12,7 @@ tracing:
 
   # Conservative trace sampling to reduce overhead
   trace_rate:
-    default: 0.1  # 10% default sampling
+    default_rate: 0.1  # 10% default sampling
 
     overrides:
       # Control commands: always trace (critical path)

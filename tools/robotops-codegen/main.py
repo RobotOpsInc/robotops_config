@@ -478,10 +478,26 @@ class YamlGenerator:
         if config_msg:
             self._generate_message_yaml(config_msg, messages, lines, indent=0)
 
+        # Strip trailing blank lines (yamllint allows max 0 blank lines at EOF)
+        while lines and lines[-1] == "":
+            lines.pop()
+
         output_file = output_dir / "yaml" / "default.yaml"
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file, 'w') as f:
-            f.write('\n'.join(lines))
+            f.write('\n'.join(lines) + '\n')
+
+    def _limit_blank_lines(self, lines: List[str], max_blanks: int = 2) -> None:
+        """Ensure no more than max_blanks consecutive blank lines at end of lines list"""
+        # Count trailing blank lines
+        blank_count = 0
+        while lines and lines[-1] == "":
+            blank_count += 1
+            lines.pop()
+
+        # Add back up to max_blanks
+        for _ in range(min(blank_count, max_blanks)):
+            lines.append("")
 
     def _generate_message_yaml(self, msg: Message, all_messages: List[Message],
                                 lines: List[str], indent: int) -> None:
@@ -489,10 +505,20 @@ class YamlGenerator:
         ind = "  " * indent
 
         for f in msg.fields:
+            # Track if we write any actual field value (not just comments)
+            wrote_field_value = False
+
             # Add section headers
             if f.annotations.section:
-                if lines and lines[-1] != "":
-                    lines.append("")
+                # Ensure we have exactly 2 blank lines before section header
+                # Remove all trailing blank lines
+                while lines and lines[-1] == "":
+                    lines.pop()
+
+                # Add exactly 2 blank lines
+                lines.append("")
+                lines.append("")
+
                 lines.append(f"{ind}# " + "=" * 77)
                 lines.append(f"{ind}# {f.annotations.section}")
                 lines.append(f"{ind}# " + "=" * 77)
@@ -511,20 +537,52 @@ class YamlGenerator:
             if f.annotations.default:
                 yaml_val = self._get_yaml_value(f)
                 lines.append(f"{ind}{f.name}: {yaml_val}")
+                wrote_field_value = True
             elif self._is_message_type(f, all_messages):
                 # Nested message
                 lines.append(f"{ind}{f.name}:")
+                wrote_field_value = True
                 nested_msg = self._find_message(f.proto_type, all_messages)
                 if nested_msg:
                     self._generate_message_yaml(nested_msg, all_messages, lines, indent + 1)
+                    # After processing nested message, limit blank lines to prevent cascading
+                    self._limit_blank_lines(lines, max_blanks=2)
 
-            lines.append("")
+            # Only add blank line if we actually wrote a field value
+            if wrote_field_value:
+                lines.append("")
+                # Ensure we never have more than 2 consecutive blank lines
+                self._limit_blank_lines(lines, max_blanks=2)
 
     def _get_yaml_value(self, field: Field) -> str:
         """Get YAML representation of default value"""
         default = field.annotations.default
 
-        if field.proto_type == "bool":
+        # Handle repeated fields (arrays) first
+        if field.is_repeated:
+            if default and default.startswith('[') and default.endswith(']'):
+                # Parse array syntax like ["*.service", "foo"]
+                items_str = default[1:-1].strip()
+                if not items_str:
+                    return "[]"
+
+                # Split by comma and clean up each item
+                items = []
+                for item in items_str.split(','):
+                    item = item.strip().strip('"').strip("'")
+                    if item:
+                        items.append(f'"{item}"')
+
+                # Return as YAML array
+                return f"[{', '.join(items)}]"
+            return "[]"
+
+        # Handle maps
+        elif field.is_map:
+            return "{}"
+
+        # Handle scalar types
+        elif field.proto_type == "bool":
             return default.lower()
         elif field.proto_type in ["int32", "int64", "uint32", "uint64", "float", "double"]:
             return default
@@ -532,10 +590,6 @@ class YamlGenerator:
             # Remove quotes if present and re-quote for YAML
             val = default.strip('"').strip("'")
             return f'"{val}"'
-        elif field.is_map:
-            return "{}"
-        elif field.is_repeated:
-            return "[]"
         else:
             return ""
 
@@ -679,12 +733,20 @@ def main():
     conan_gen = ConanfileGenerator()
     conan_gen.generate(output_dir, version)
 
+    # Create Python package __init__.py files for protobuf imports
+    python_dir = output_dir / "sdks" / "python"
+    if python_dir.exists():
+        (python_dir / "robotops" / "__init__.py").touch()
+        (python_dir / "robotops" / "config" / "__init__.py").touch()
+        (python_dir / "robotops" / "config" / "v1" / "__init__.py").touch()
+
     print(f"Generated code to {output_dir} (version {version})")
     print(f"  - Rust: {output_dir}/sdks/rust/lib.rs")
     print(f"  - Rust: {output_dir}/sdks/rust/defaults.rs")
     print(f"  - Rust: {output_dir}/sdks/rust/Cargo.toml")
     print(f"  - C++: {output_dir}/sdks/cpp/defaults.hpp")
     print(f"  - C++: {output_dir}/sdks/cpp/conanfile.py")
+    print(f"  - Python: {output_dir}/sdks/python/robotops/config/v1/config_pb2.py")
     print(f"  - YAML: {output_dir}/yaml/default.yaml")
 
 

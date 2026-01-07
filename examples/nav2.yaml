@@ -12,7 +12,7 @@ tracing:
 
   # Optimized sampling for Nav2 topics
   trace_rate:
-    default: 1.0
+    default_rate: 1.0
 
     overrides:
       # Sensor inputs: reduced sampling

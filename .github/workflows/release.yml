@@ -107,15 +107,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Upload YAML file to GitHub release
+          # Upload YAML file to GitHub release with user-friendly name
           gh release upload "${{ steps.version.outputs.tag }}" \
-            generated/yaml/default.yaml \
+            generated/yaml/default.yaml#config.yaml \
             --clobber
 
-          echo "✅ Uploaded default.yaml to release ${{ steps.version.outputs.tag }}"
+          echo "✅ Uploaded config.yaml to release ${{ steps.version.outputs.tag }}"
           echo ""
           echo "Public download URL:"
-          echo "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/default.yaml"
+          echo "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -166,7 +166,7 @@ jobs:
           echo "### Published Packages" >> $GITHUB_STEP_SUMMARY
           echo "✅ Rust crate: https://cloudsmith.io/~robotopsinc/repos/robotops-config-rust/packages/" >> $GITHUB_STEP_SUMMARY
           echo "✅ C++ package: https://cloudsmith.io/~robotopsinc/repos/robotops-config-cpp/packages/" >> $GITHUB_STEP_SUMMARY
-          echo "✅ YAML config: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/default.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "✅ YAML config: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -184,5 +184,5 @@ jobs:
           echo "**YAML Config:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "# Download versioned configuration" >> $GITHUB_STEP_SUMMARY
-          echo "curl -L -o config.yaml https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/default.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "curl -L -o config.yaml https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

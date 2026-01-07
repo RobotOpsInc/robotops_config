@@ -21,6 +21,12 @@ plugins:
     opt:
       - speed
 
+  # Python generation via protobuf (for validation tooling)
+  - protoc_builtin: python
+    out: generated/sdks/python
+    opt:
+      - pyi_out=generated/sdks/python
+
   # Custom defaults generator runs separately after buf generate
   # See: python3 tools/robotops-codegen/main.py
 

@@ -38,8 +38,13 @@ bump-version LEVEL:
     # Update VERSION file
     echo "$NEW_VERSION" > VERSION
 
-    # Update example files (if any still have schema_version)
-    find examples -name "*.yaml" -exec sed -i '' "s/schema_version: \"$CURRENT\"/schema_version: \"$NEW_VERSION\"/" {} \; 2>/dev/null || true
+    # Check if example files need manual updates
+    EXAMPLE_FILES_WITH_VERSION=()
+    for f in examples/*.yaml; do
+        if [ -f "$f" ] && grep -q "schema_version:" "$f" 2>/dev/null; then
+            EXAMPLE_FILES_WITH_VERSION+=("$f")
+        fi
+    done
 
     # Update proto @default annotation
     if [ -f "proto/robotops/config/v1/config.proto" ]; then
@@ -74,18 +79,29 @@ bump-version LEVEL:
         ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
     fi
 
-    echo "Updated:"
+    echo "✅ Updated:"
     echo "  - VERSION"
-    echo "  - examples/*.yaml (if they contain schema_version)"
     echo "  - proto/robotops/config/v1/config.proto (@default annotation)"
     echo "  - generated/yaml/default.yaml (regenerated)"
     echo "  - CHANGELOG.md (added section for $NEW_VERSION)"
     echo ""
+
+    # Warn about example files that need manual updates
+    if [ ${#EXAMPLE_FILES_WITH_VERSION[@]} -gt 0 ]; then
+        echo "⚠️  Manual update required for example files:"
+        for f in "${EXAMPLE_FILES_WITH_VERSION[@]}"; do
+            echo "  - $f"
+        done
+        echo ""
+        echo "  Update schema_version from \"$CURRENT\" to \"$NEW_VERSION\" in these files"
+        echo ""
+    fi
+
     echo "Next steps:"
-    echo "  1. Verify: just validate-versions"
-    echo "  2. Edit CHANGELOG.md to describe changes"
-    echo "  3. Commit: git add -A && git commit -m 'chore: bump schema version to $NEW_VERSION'"
-    echo "  4. Tag: git tag v$NEW_VERSION"
+    echo "  1. Update example YAML files (see warning above)"
+    echo "  2. Verify: just validate-versions"
+    echo "  3. Edit CHANGELOG.md to describe changes"
+    echo "  4. Commit: git add -A && git commit -m 'chore: bump schema version to $NEW_VERSION'"
     echo "  5. Push: git push && git push --tags"
 
 # Validate all schema_versions match VERSION file
@@ -153,13 +169,40 @@ validate-versions:
 
     exit $EXIT_CODE
 
+# Validate example YAML files conform to protobuf schema
+validate-examples:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Check if generated Python protobuf exists
+    if [ ! -f "generated/sdks/python/robotops/config/v1/config_pb2.py" ]; then
+        echo "Error: Python protobuf files not found. Run 'just generate' first."
+        exit 1
+    fi
+
+    # Check for required Python packages
+    if ! python3 -c "import google.protobuf" 2>/dev/null; then
+        echo "Error: protobuf Python package not found."
+        echo "Install with: pip3 install protobuf pyyaml"
+        exit 1
+    fi
+
+    if ! python3 -c "import yaml" 2>/dev/null; then
+        echo "Error: pyyaml Python package not found."
+        echo "Install with: pip3 install pyyaml"
+        exit 1
+    fi
+
+    # Run validation script
+    python3 tools/validate-examples.py
+
 # Run all validations using Docker (recommended - ensures consistency)
 validate: validate-versions
     docker build -f Dockerfile.validate -t robotops-config-validate .
     docker run --rm -v {{justfile_directory()}}:/workspace robotops-config-validate
 
 # Run validations natively (requires yamllint installed locally)
-validate-native: validate-versions
+validate-native: validate-versions validate-examples
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -169,6 +212,6 @@ validate-native: validate-versions
         exit 1
     fi
 
-    # Run validations
+    # Run YAML linting
     yamllint generated/yaml/
     yamllint examples/

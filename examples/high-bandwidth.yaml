@@ -12,7 +12,7 @@ tracing:
 
   # Aggressive trace sampling for high-bandwidth topics
   trace_rate:
-    default: 1.0
+    default_rate: 1.0
     overrides:
       # Camera images: trace 1% (high bandwidth, low value per trace)
       - pattern: "^/camera/.*/image_raw$"

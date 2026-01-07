@@ -34,13 +34,13 @@ Download the versioned configuration from GitHub releases:
 sudo mkdir -p /etc/robotops
 
 # Download a specific version (recommended - use latest release version)
-curl -L https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/default.yaml \
-  | sudo tee /etc/robotops/config.yaml > /dev/null
+curl -L -o /etc/robotops/config.yaml \
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/config.yaml
 
 # Or get the latest release
 LATEST_VERSION=$(curl -s https://api.github.com/repos/RobotOpsInc/robotops_config/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-curl -L "https://github.com/RobotOpsInc/robotops_config/releases/download/${LATEST_VERSION}/default.yaml" \
-  | sudo tee /etc/robotops/config.yaml > /dev/null
+curl -L -o /etc/robotops/config.yaml \
+  "https://github.com/RobotOpsInc/robotops_config/releases/download/${LATEST_VERSION}/config.yaml"
 ```
 
 ### CI/CD Usage
@@ -50,14 +50,13 @@ In automated pipelines, download the config from releases:
 ```yaml
 - name: Download RobotOps config
   run: |
-    mkdir -p config
-    curl -L -o config/config.yaml \
-      https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/default.yaml
+    curl -L -o config.yaml \
+      https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/config.yaml
 ```
 
 The predictable URL format is:
 ```
-https://github.com/RobotOpsInc/robotops_config/releases/download/{tag}/default.yaml
+https://github.com/RobotOpsInc/robotops_config/releases/download/{tag}/config.yaml
 ```
 
 ## Usage
