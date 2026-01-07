@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.3.3"
+  // @default "0.3.4"
   string schema_version = 1;
 
   // Robot identity and fleet organization.

@@ -155,6 +155,10 @@ jobs:
         run: |
           pip3 install conan
 
+      - name: Set up Conan profile
+        run: |
+          conan profile detect --force
+
       - name: Publish C++ package to Cloudsmith
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
