@@ -143,10 +143,9 @@ jobs:
           mkdir -p ~/.cargo
           cat >> ~/.cargo/config.toml <<EOF
           [registries.cloudsmith]
-          index = "sparse+https://dl.cloudsmith.io/basic/robotopsinc/robotops-config-rust/cargo/index.git"
-
-          [registry.cloudsmith]
-          token = "Bearer ${CLOUDSMITH_API_KEY}"
+          index = "sparse+https://cargo.cloudsmith.io/robotops/robotops-config-rust/"
+          token = "Token ${CLOUDSMITH_API_KEY}"
+          credential-provider = "cargo:token"
           EOF
 
           # Publish to Cloudsmith
@@ -159,16 +158,17 @@ jobs:
       - name: Publish C++ package to Cloudsmith
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+          CONAN_USER: github-actions-bk1d
         run: |
           cd generated/sdks/cpp
 
           # Configure Cloudsmith remote
-          conan remote add cloudsmith https://api.cloudsmith.io/conan/robotopsinc/robotops-config-cpp/ || true
-          conan remote login cloudsmith -p "${CLOUDSMITH_API_KEY}" token
+          conan remote add robotops-robotops-config-cpp https://conan.cloudsmith.io/robotops/robotops-config-cpp/ || true
+          conan remote login -p "${CLOUDSMITH_API_KEY}" robotops-robotops-config-cpp "${CONAN_USER}"
 
           # Create and upload package
-          conan create . --version=${{ steps.version.outputs.version }}
-          conan upload "robotops-config/${{ steps.version.outputs.version }}" -r cloudsmith --all
+          conan create . --version=${{ steps.version.outputs.version }} --user="${CONAN_USER}" --channel=_
+          conan upload "robotops-config/${{ steps.version.outputs.version }}@${CONAN_USER}/_" --confirm -r robotops-robotops-config-cpp
 
       - name: Summary
         run: |
