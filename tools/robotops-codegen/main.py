@@ -610,71 +610,45 @@ class YamlGenerator:
 
 
 class CargoTomlGenerator:
-    """Generate Cargo.toml for Rust crate"""
+    """Generate Cargo.toml for Rust crate from template"""
 
     def generate(self, output_dir: Path, version: str) -> None:
-        """Generate Cargo.toml"""
-        lines = []
-        lines.append("[package]")
-        lines.append('name = "robotops-config"')
-        lines.append(f'version = "{version}"')
-        lines.append('edition = "2021"')
-        lines.append('authors = ["RobotOps Team <support@robotops.com>"]')
-        lines.append('description = "Generated Protobuf configuration types for RobotOps distributed tracing"')
-        lines.append('license = "Apache-2.0"')
-        lines.append('repository = "https://github.com/RobotOpsInc/robotops_config"')
-        lines.append('homepage = "https://github.com/RobotOpsInc/robotops_config"')
-        lines.append('keywords = ["robotics", "ros2", "tracing", "config", "protobuf"]')
-        lines.append('categories = ["config"]')
-        lines.append('')
-        lines.append('[lib]')
-        lines.append('name = "robotops_config"')
-        lines.append('path = "lib.rs"')
-        lines.append('')
-        lines.append('[dependencies]')
-        lines.append('prost = "0.13"')
+        """Generate Cargo.toml from template"""
+        script_dir = Path(__file__).parent
+        template_file = script_dir.parent / "templates" / "rust" / "Cargo.toml"
+
+        if not template_file.exists():
+            print(f"Warning: Template {template_file} not found, skipping Cargo.toml generation", file=sys.stderr)
+            return
+
+        # Read template and replace version placeholder
+        template_content = template_file.read_text()
+        cargo_content = template_content.replace("{{VERSION}}", version)
 
         output_file = output_dir / "sdks" / "rust" / "Cargo.toml"
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_file, 'w') as f:
-            f.write('\n'.join(lines))
+        output_file.write_text(cargo_content)
 
 
 class ConanfileGenerator:
-    """Generate conanfile.py for C++ package"""
+    """Generate conanfile.py for C++ package from template"""
 
     def generate(self, output_dir: Path, version: str) -> None:
-        """Generate conanfile.py"""
-        lines = []
-        lines.append('from conan import ConanFile')
-        lines.append('from conan.tools.files import copy')
-        lines.append('')
-        lines.append('class RobotOpsConfigConan(ConanFile):')
-        lines.append('    name = "robotops-config"')
-        lines.append(f'    version = "{version}"')
-        lines.append('    license = "Apache-2.0"')
-        lines.append('    url = "https://github.com/RobotOpsInc/robotops_config"')
-        lines.append('    description = "Generated Protobuf configuration types for RobotOps distributed tracing"')
-        lines.append('    topics = ("robotics", "ros2", "tracing", "protobuf")')
-        lines.append('    settings = "os", "compiler", "build_type", "arch"')
-        lines.append('    exports_sources = "*.h", "*.hpp", "*.cc"')
-        lines.append('')
-        lines.append('    def requirements(self):')
-        lines.append('        self.requires("protobuf/3.21.12")')
-        lines.append('')
-        lines.append('    def package(self):')
-        lines.append('        copy(self, "*.h", src=self.source_folder, dst=f"{self.package_folder}/include")')
-        lines.append('        copy(self, "*.hpp", src=self.source_folder, dst=f"{self.package_folder}/include")')
-        lines.append('        copy(self, "*.cc", src=self.source_folder, dst=f"{self.package_folder}/src")')
-        lines.append('')
-        lines.append('    def package_info(self):')
-        lines.append('        self.cpp_info.libs = []')
-        lines.append('        self.cpp_info.includedirs = ["include"]')
+        """Generate conanfile.py from template"""
+        script_dir = Path(__file__).parent
+        template_file = script_dir.parent / "templates" / "cpp" / "conanfile.py"
+
+        if not template_file.exists():
+            print(f"Warning: Template {template_file} not found, skipping conanfile.py generation", file=sys.stderr)
+            return
+
+        # Read template and replace version placeholder
+        template_content = template_file.read_text()
+        conan_content = template_content.replace("{{VERSION}}", version)
 
         output_file = output_dir / "sdks" / "cpp" / "conanfile.py"
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_file, 'w') as f:
-            f.write('\n'.join(lines))
+        output_file.write_text(conan_content)
 
 
 def main():

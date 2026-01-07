@@ -1,0 +1,17 @@
+[package]
+name = "robotops-config"
+version = "{{VERSION}}"
+edition = "2021"
+rust-version = "1.92"
+license = "Apache-2.0"
+repository = "https://github.com/RobotOpsInc/robotops_config"
+description = "Generated Protobuf configuration types for RobotOps distributed tracing"
+keywords = ["robotics", "ros2", "tracing", "protobuf"]
+categories = ["robotics", "config"]
+
+[lib]
+name = "robotops_config"
+path = "lib.rs"
+
+[dependencies]
+prost = "0.13"
