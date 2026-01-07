@@ -23,7 +23,23 @@ jobs:
           # Check against the PR's base branch (e.g., main or development)
           BASE_BRANCH="${{ github.base_ref }}"
           echo "Checking for breaking changes against branch: $BASE_BRANCH"
-          buf breaking --against "https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH"
+
+          # Try to check against base branch
+          set +e
+          OUTPUT=$(buf breaking --against "https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH" 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          if echo "$OUTPUT" | grep -q "had no .proto files"; then
+            echo "ℹ️  Base branch $BASE_BRANCH has no proto files yet - skipping breaking change check"
+            echo "This is expected for the first PR adding proto files to this branch"
+            exit 0
+          elif [ $EXIT_CODE -ne 0 ]; then
+            echo "$OUTPUT"
+            exit $EXIT_CODE
+          else
+            echo "✅ No breaking changes detected against $BASE_BRANCH"
+          fi
 
   proto-generate:
     runs-on: ubuntu-latest
