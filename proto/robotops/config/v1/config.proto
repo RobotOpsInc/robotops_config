@@ -1,0 +1,776 @@
+syntax = "proto3";
+
+package robotops.config.v1;
+
+// =============================================================================
+// @section Robot Agent Configuration
+// Auto-generated SDK code from this schema - see robotops_config repository
+// =============================================================================
+
+// Top-level configuration for RobotOps distributed tracing and monitoring.
+message Config {
+  // Schema version for configuration compatibility checking.
+  // Components validate that the major version matches their supported version.
+  // @default "0.2.0"
+  string schema_version = 1;
+
+  // Robot identity and fleet organization.
+  RobotConfig robot = 2;
+
+  // Deployment version tracking.
+  DeploymentConfig deployment = 3;
+
+  // API key authentication for RobotOps backend.
+  AuthConfig auth = 4;
+
+  // RobotOps backend endpoint and retry configuration.
+  BackendConfig backend = 5;
+
+  // Distributed tracing configuration.
+  TracingConfig tracing = 6;
+
+  // Topic discovery and filtering.
+  DiscoveryConfig discovery = 7;
+
+  // System and ROS metrics collection.
+  MetricsConfig metrics = 8;
+
+  // Message capture strategies.
+  SubscriptionsConfig subscriptions = 9;
+
+  // Transform tree (TF) monitoring.
+  TfConfig tf = 10;
+
+  // Action and service monitoring.
+  MonitoringConfig monitoring = 11;
+
+  // Agent logging configuration.
+  LoggingConfig logging = 12;
+
+  // Log retention policies.
+  LogRetentionConfig log_retention = 13;
+
+  // System log collection via journald.
+  SystemLogsConfig system_logs = 14;
+}
+
+// =============================================================================
+// @section Robot Identity
+// =============================================================================
+
+// Robot identity and fleet organization.
+message RobotConfig {
+  // Unique identifier for this robot (alphanumeric, hyphens, underscores; 3-128 chars).
+  // If not provided, auto-generates as "{hostname}-{short_hash}" with a warning.
+  // @env ROBOT_OPS_AGENT_ROBOT_ID
+  string id = 1;
+
+  // Human-friendly display name (optional, no validation constraints).
+  // @env ROBOT_OPS_AGENT_ROBOT_NICKNAME
+  string nickname = 2;
+
+  // Fleet assignment.
+  // @default "default"
+  // @env ROBOT_OPS_AGENT_ROBOT_FLEET_ID
+  string fleet_id = 3;
+
+  // Deployment environment.
+  // @default "development"
+  // @env ROBOT_OPS_AGENT_ENVIRONMENT
+  // @example "production"
+  // @example "staging"
+  // @example "simulation"
+  string environment = 4;
+
+  // Custom tags for filtering and organization (max 20 tags).
+  // Keys: alphanumeric, hyphens, underscores; 1-64 characters.
+  // Values: any string; 1-256 characters.
+  // @env ROBOT_OPS_AGENT_TAGS (JSON format)
+  map<string, string> tags = 5;
+}
+
+// =============================================================================
+// @section Deployment Version
+// =============================================================================
+
+// Deployment version tracking for correlating issues with software releases.
+message DeploymentConfig {
+  // Software version identifier (no format validation - use any scheme).
+  // Supports env var templating: ${VAR_NAME}.
+  // @env ROBOTOPS_DEPLOYMENT_VERSION
+  // @example "2.1.0"
+  // @example "a1b2c3d"
+  // @example "v2.1.0-${BUILD_NUMBER}"
+  string version = 1;
+}
+
+// =============================================================================
+// @section Authentication
+// =============================================================================
+
+// API key authentication for RobotOps backend communication.
+message AuthConfig {
+  // API key for RobotOps backend (starts with "sk_").
+  // @env ROBOTOPS_API_KEY
+  string api_key = 1;
+
+  // Alternative: Read API key from file (useful for secrets management).
+  // @env ROBOT_OPS_AGENT_AUTH_API_KEY_FILE
+  string api_key_file = 2;
+}
+
+// =============================================================================
+// @section Backend Configuration
+// =============================================================================
+
+// RobotOps backend endpoint and retry configuration.
+message BackendConfig {
+  // Backend gRPC endpoint URL.
+  // @default "https://api.robotops.com"
+  // @env ROBOT_OPS_AGENT_BACKEND_URL
+  string url = 1;
+
+  // Heartbeat interval for connectivity checks (seconds).
+  // @default 30
+  // @min 1
+  // @env ROBOT_OPS_AGENT_BACKEND_HEARTBEAT_INTERVAL_SECS
+  int32 heartbeat_interval_secs = 2;
+
+  // Maximum retry attempts before entering offline mode.
+  // @default 5
+  // @min 0
+  // @env ROBOT_OPS_AGENT_BACKEND_MAX_RETRY_ATTEMPTS
+  int32 max_retry_attempts = 3;
+
+  // Initial backoff duration for exponential backoff (seconds).
+  // @default 1
+  // @min 1
+  // @env ROBOT_OPS_AGENT_BACKEND_INITIAL_BACKOFF_SECS
+  int32 initial_backoff_secs = 4;
+
+  // Maximum backoff duration for exponential backoff (seconds).
+  // @default 60
+  // @min 1
+  // @env ROBOT_OPS_AGENT_BACKEND_MAX_BACKOFF_SECS
+  int32 max_backoff_secs = 5;
+}
+
+// =============================================================================
+// @section Distributed Tracing
+// =============================================================================
+
+// Distributed tracing configuration for rmw_robotops and robot_agent.
+message TracingConfig {
+  // Master enable switch for distributed tracing.
+  // When false, rmw_robotops acts as a pure passthrough with zero overhead.
+  // @default true
+  // @env ROBOTOPS_TRACING_ENABLED
+  bool enabled = 1;
+
+  // The RMW implementation to wrap and delegate to.
+  // @default "rmw_fastrtps_cpp"
+  // @enum rmw_fastrtps_cpp
+  // @enum rmw_cyclonedds_cpp
+  // @enum rmw_connextdds
+  // @env ROBOTOPS_UNDERLYING_RMW
+  string underlying_rmw = 2;
+
+  // Head-based trace sampling configuration.
+  TraceRateConfig trace_rate = 3;
+
+  // Cross-process correlation configuration.
+  CorrelationConfig correlation = 4;
+
+  // Clock synchronization configuration.
+  ClockConfig clock = 5;
+
+  // Diagnostics publishing configuration.
+  DiagnosticsConfig diagnostics = 6;
+
+  // Performance tuning settings.
+  PerformanceConfig performance = 7;
+}
+
+// Head-based trace sampling configuration.
+message TraceRateConfig {
+  // Default sampling rate for all topics (0.0 - 1.0).
+  // @default 1.0
+  // @min 0.0
+  // @max 1.0
+  double default_rate = 1;
+
+  // Per-topic sampling rate overrides (first matching pattern wins).
+  repeated TraceRateOverride overrides = 2;
+}
+
+// Per-topic trace rate override.
+message TraceRateOverride {
+  // Regex pattern to match topic names.
+  // @example "^/camera/.*/image_raw$"
+  string pattern = 1;
+
+  // Sampling rate for matching topics (0.0 - 1.0).
+  // @min 0.0
+  // @max 1.0
+  double rate = 2;
+}
+
+// Cross-process correlation configuration.
+message CorrelationConfig {
+  // Maximum time difference for correlation (nanoseconds).
+  // @default 10000000
+  // @min 0
+  // @unit nanoseconds
+  int64 timestamp_tolerance_ns = 1;
+
+  // Correlation window duration (seconds).
+  // @default 30
+  // @min 1
+  int32 window_secs = 2;
+
+  // Use content hash for disambiguation.
+  // @default true
+  bool hash_enabled = 3;
+}
+
+// Clock synchronization configuration.
+message ClockConfig {
+  // Maximum acceptable clock skew (nanoseconds).
+  // @default 10000000
+  // @min 0
+  // @unit nanoseconds
+  int64 max_acceptable_skew_ns = 1;
+
+  // Clock check interval (seconds).
+  // @default 60
+  // @min 1
+  int32 check_interval_secs = 2;
+}
+
+// Diagnostics publishing configuration.
+message DiagnosticsConfig {
+  // Enable/disable diagnostics topic publishing.
+  // @default true
+  bool enabled = 1;
+
+  // Diagnostics publishing interval (seconds).
+  // @default 10
+  // @min 1
+  int32 interval_secs = 2;
+}
+
+// Performance tuning settings.
+message PerformanceConfig {
+  // Internal queue depth for trace events.
+  // @default 1024
+  // @min 1
+  int32 queue_size = 1;
+
+  // Auto-disable tracing after this many consecutive failures.
+  // @default 100
+  // @min 0
+  int32 failure_threshold = 2;
+}
+
+// =============================================================================
+// @section Discovery
+// =============================================================================
+
+// Topic discovery and filtering configuration.
+message DiscoveryConfig {
+  // How often to poll for new topics/nodes (seconds).
+  // @default 5
+  // @min 1
+  int32 poll_interval_secs = 1;
+
+  // Topic filters (regex patterns, optional).
+  // If specified, only matching topics are subscribed.
+  repeated string topic_filters = 2;
+
+  // Topic blacklist (regex patterns, optional).
+  repeated string topic_blacklist = 3;
+}
+
+// =============================================================================
+// @section Metrics Collection
+// =============================================================================
+
+// System and ROS metrics collection configuration.
+message MetricsConfig {
+  // Master enable switch for all metrics.
+  // @default true
+  bool enabled = 1;
+
+  // Emit metrics snapshots at this interval (seconds).
+  // @default 10
+  // @min 1
+  int32 collection_interval_secs = 2;
+
+  // Re-check optional sensors (battery/thermal) at this interval (seconds).
+  // @default 60
+  // @min 1
+  int32 autodetect_interval_secs = 3;
+
+  // Individual metric categories (all enabled by default).
+  // @default true
+  bool topic_metrics = 4;
+
+  // @default true
+  bool action_service_metrics = 5;
+
+  // @default true
+  bool infrastructure_metrics = 6;
+
+  // @default true
+  bool process_metrics = 7;
+
+  // @default true
+  bool temperature_metrics = 8;
+
+  // @default true
+  bool battery_metrics = 9;
+
+  // @default true
+  bool network_quality_metrics = 10;
+
+  // Number of top processes to track.
+  // @default 25
+  // @min 1
+  int32 process_top_n = 11;
+
+  // Include process command line in metrics.
+  // @default false
+  bool include_process_cmdline = 12;
+}
+
+// =============================================================================
+// @section Subscriptions
+// =============================================================================
+
+// Message capture strategies configuration.
+message SubscriptionsConfig {
+  // Default capture strategy (plug-and-play behavior).
+  // @default "adaptive"
+  // @enum adaptive
+  // @enum all
+  // @enum on_change
+  // @enum rate_limit
+  // @enum sample
+  string default_strategy = 1;
+
+  // Default target Hz for rate limiting.
+  // @default 10.0
+  // @min 0.0
+  double default_target_hz = 2;
+
+  // Adaptive rate limiting configuration.
+  AdaptiveConfig adaptive = 3;
+
+  // Per-topic overrides using regex patterns.
+  repeated TopicOverride topic_overrides = 4;
+}
+
+// Adaptive rate limiting configuration.
+message AdaptiveConfig {
+  // Topics above this bandwidth are considered high-bandwidth sensors (bytes/sec).
+  // @default 1048576
+  // @min 0
+  int64 high_bandwidth_threshold_bps = 1;
+
+  // Downsample high-bandwidth topics to this rate (Hz).
+  // @default 2.0
+  // @min 0.0
+  double high_bandwidth_target_hz = 2;
+
+  // Topics below this bandwidth are considered low-bandwidth state (bytes/sec).
+  // @default 10240
+  // @min 0
+  int64 low_bandwidth_threshold_bps = 3;
+
+  // Strategy for low-bandwidth topics.
+  // @default "on_change"
+  // @enum all
+  // @enum on_change
+  // @enum rate_limit
+  // @enum sample
+  string low_bandwidth_strategy = 4;
+
+  // Medium-bandwidth topics use this rate (Hz).
+  // @default 10.0
+  // @min 0.0
+  double medium_bandwidth_target_hz = 5;
+}
+
+// Per-topic capture strategy override.
+message TopicOverride {
+  // Regex pattern to match topic names.
+  string pattern = 1;
+
+  // Capture strategy.
+  // @enum all
+  // @enum on_change
+  // @enum rate_limit
+  // @enum sample
+  string strategy = 2;
+
+  // Target Hz for rate limiting (optional).
+  // @min 0.0
+  double target_hz = 3;
+
+  // Sampling percentage (0-100, optional).
+  // @min 0.0
+  // @max 100.0
+  double sample_percentage = 4;
+}
+
+// =============================================================================
+// @section TF Monitoring
+// =============================================================================
+
+// Transform tree (TF) monitoring configuration.
+message TfConfig {
+  // Enable/disable TF monitoring.
+  // @default true
+  bool enabled = 1;
+
+  // Snapshot frequency (Hz).
+  // @default 10.0
+  // @min 0.0
+  double snapshot_hz = 2;
+
+  // Maximum number of transforms kept in memory.
+  // @default 10000
+  // @min 1
+  int32 max_transforms = 3;
+
+  // Enable verbose TF debugging logs.
+  // @default false
+  bool verbose = 4;
+}
+
+// =============================================================================
+// @section Monitoring
+// =============================================================================
+
+// Action and service monitoring configuration.
+message MonitoringConfig {
+  // Action monitoring configuration.
+  ActionMonitoringConfig actions = 1;
+
+  // Service monitoring configuration.
+  ServiceMonitoringConfig services = 2;
+}
+
+// Action monitoring configuration.
+message ActionMonitoringConfig {
+  // Enable/disable action monitoring.
+  // @default true
+  bool enabled = 1;
+
+  // Capture strategy.
+  // @default "rate_limit"
+  // @enum all
+  // @enum on_change
+  // @enum rate_limit
+  // @enum sample
+  string strategy = 2;
+
+  // Rate limit target when strategy is "rate_limit" (Hz).
+  // @default 50.0
+  // @min 0.0
+  double target_hz = 3;
+
+  // Sampling percentage when strategy is "sample" (0-100).
+  // @default 10.0
+  // @min 0.0
+  // @max 100.0
+  double sample_percentage = 4;
+
+  // Max bytes to keep per action event payload.
+  // @default 16384
+  // @min 1
+  int32 max_payload_bytes = 5;
+}
+
+// Service monitoring configuration.
+message ServiceMonitoringConfig {
+  // Enable/disable service monitoring.
+  // @default true
+  bool enabled = 1;
+
+  // Capture strategy.
+  // @default "rate_limit"
+  // @enum all
+  // @enum on_change
+  // @enum rate_limit
+  // @enum sample
+  string strategy = 2;
+
+  // Rate limit target when strategy is "rate_limit" (Hz).
+  // @default 20.0
+  // @min 0.0
+  double target_hz = 3;
+
+  // Sampling percentage when strategy is "sample" (0-100).
+  // @default 10.0
+  // @min 0.0
+  // @max 100.0
+  double sample_percentage = 4;
+
+  // Max bytes to keep per service event payload.
+  // @default 65536
+  // @min 1
+  int32 max_payload_bytes = 5;
+}
+
+// =============================================================================
+// @section Logging
+// =============================================================================
+
+// Agent logging configuration.
+message LoggingConfig {
+  // Capture ROS2 logs from /rosout topic.
+  // @default true
+  bool capture_rosout = 1;
+
+  // Agent log level.
+  // @default "info"
+  // @enum trace
+  // @enum debug
+  // @enum info
+  // @enum warn
+  // @enum error
+  string level = 2;
+
+  // Default output format for logs.
+  // @default "json"
+  // @enum json
+  // @enum human
+  string format = 3;
+
+  // Output destinations.
+  LogOutputsConfig outputs = 4;
+
+  // Per-module log level filters (override global level for specific targets).
+  map<string, string> module_filters = 5;
+
+  // Include line numbers in logs.
+  // @default true
+  bool include_line_numbers = 6;
+
+  // Include thread IDs in logs.
+  // @default false
+  bool include_thread_ids = 7;
+}
+
+// Log output destinations configuration.
+message LogOutputsConfig {
+  // Standard output configuration.
+  StdoutOutputConfig stdout = 1;
+
+  // File output configuration.
+  FileOutputConfig file = 2;
+
+  // Journald output configuration.
+  JournaldOutputConfig journald = 3;
+}
+
+// Standard output configuration.
+message StdoutOutputConfig {
+  // Enable stdout logging.
+  // @default true
+  bool enabled = 1;
+
+  // Output format (optional per-sink override).
+  // @enum json
+  // @enum human
+  string format = 2;
+}
+
+// File output configuration.
+message FileOutputConfig {
+  // Enable file logging.
+  // @default false
+  bool enabled = 1;
+
+  // Log file path.
+  // @default "/var/log/robot_ops_agent"
+  string path = 2;
+
+  // Maximum log file size (MB).
+  // @default 100
+  // @min 1
+  int32 max_size_mb = 3;
+
+  // Maximum number of log files to keep.
+  // @default 5
+  // @min 1
+  int32 max_files = 4;
+
+  // Output format (optional per-sink override).
+  // @enum json
+  // @enum human
+  string format = 5;
+}
+
+// Journald output configuration.
+message JournaldOutputConfig {
+  // Enable journald logging (auto, true, false).
+  // @default "auto"
+  string enabled = 1;
+}
+
+// =============================================================================
+// @section Log Retention
+// =============================================================================
+
+// Log retention policies.
+message LogRetentionConfig {
+  // Delete logs after successful upload.
+  // @default true
+  bool delete_after_upload = 1;
+
+  // Maximum local storage for logs (MB).
+  // @default 500
+  // @min 1
+  int32 max_local_storage_mb = 2;
+
+  // Maximum age for logs (days).
+  // @default 30
+  // @min 1
+  int32 max_age_days = 3;
+}
+
+// =============================================================================
+// @section System Logs
+// =============================================================================
+
+// System log collection via journald.
+message SystemLogsConfig {
+  // Enable system log collection.
+  // @default true
+  bool enabled = 1;
+
+  // Action when journald is unavailable.
+  // @default "warn"
+  // @enum warn
+  // @enum ignore
+  string on_unavailable = 2;
+
+  // Journald configuration.
+  JournaldConfig journald = 3;
+}
+
+// Journald configuration.
+message JournaldConfig {
+  // Minimum priority to capture.
+  // @default "warning"
+  // @enum emerg
+  // @enum alert
+  // @enum crit
+  // @enum err
+  // @enum warning
+  // @enum notice
+  // @enum info
+  // @enum debug
+  string min_priority = 1;
+
+  // Systemd unit filtering.
+  UnitFilteringConfig units = 2;
+
+  // Source category filtering.
+  SourceFilteringConfig sources = 3;
+
+  // Transport filtering.
+  TransportFilteringConfig transports = 4;
+
+  // Rate limiting configuration.
+  RateLimitingConfig rate_limiting = 5;
+
+  // Deduplication configuration.
+  DeduplicationConfig deduplication = 6;
+}
+
+// Systemd unit filtering configuration.
+message UnitFilteringConfig {
+  // Units to include (glob patterns).
+  // @default ["*.service"]
+  repeated string include = 1;
+
+  // Units to exclude (glob patterns).
+  repeated string exclude = 2;
+}
+
+// Source category filtering configuration.
+message SourceFilteringConfig {
+  // Kernel source filtering.
+  SourceConfig kernel = 1;
+
+  // Systemd source filtering.
+  SourceConfig systemd = 2;
+
+  // Network source filtering.
+  SourceConfig network = 3;
+
+  // Auth source filtering (privacy-sensitive; opt-in only).
+  SourceConfig auth = 4;
+}
+
+// Individual source configuration.
+message SourceConfig {
+  // Enable this source category.
+  // @default true (except auth which defaults to false)
+  bool enabled = 1;
+
+  // Minimum priority for this source.
+  // @default "warning"
+  string min_priority = 2;
+}
+
+// Transport filtering configuration.
+message TransportFilteringConfig {
+  // Kernel transport.
+  // @default true
+  bool kernel = 1;
+
+  // Syslog transport.
+  // @default true
+  bool syslog = 2;
+
+  // Stdout transport.
+  // @default true
+  bool stdout = 3;
+
+  // Journal transport.
+  // @default true
+  bool journal = 4;
+
+  // Audit transport.
+  // @default false
+  bool audit = 5;
+}
+
+// Rate limiting configuration.
+message RateLimitingConfig {
+  // Maximum logs per minute.
+  // @default 100
+  // @min 1
+  int32 max_logs_per_minute = 1;
+
+  // Burst allowance.
+  // @default 200
+  // @min 1
+  int32 burst_allowance = 2;
+}
+
+// Deduplication configuration.
+message DeduplicationConfig {
+  // Enable deduplication.
+  // @default true
+  bool enabled = 1;
+
+  // Deduplication window (seconds).
+  // @default 60
+  // @min 1
+  int32 window_seconds = 2;
+}

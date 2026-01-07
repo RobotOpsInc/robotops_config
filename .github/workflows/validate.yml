@@ -6,6 +6,53 @@ on:
   pull_request:
 
 jobs:
+  proto-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Buf lint
+        run: buf lint
+
+      - name: Buf breaking (check against main)
+        if: github.event_name == 'pull_request'
+        run: buf breaking --against 'https://github.com/RobotOpsInc/robotops_config.git#branch=main'
+
+  proto-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Generate code
+        run: |
+          buf generate
+          python3 tools/robotops-codegen/main.py
+
+      - name: Verify generated files are committed
+        run: |
+          # Check if generated files have uncommitted changes
+          if ! git diff --exit-code generated/; then
+            echo "::error::Generated files are out of sync. Run 'buf generate && python3 tools/robotops-codegen/main.py' and commit the changes."
+            git diff generated/
+            exit 1
+          fi
+
   validate:
     runs-on: ubuntu-latest
     steps:

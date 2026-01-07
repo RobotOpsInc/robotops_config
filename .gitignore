@@ -1,0 +1,5 @@
+# Generated SDK code (built during CI/CD)
+generated/sdks/
+
+# Keep the YAML config for documentation
+!generated/yaml/

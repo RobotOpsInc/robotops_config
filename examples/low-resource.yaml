@@ -1,0 +1,74 @@
+# Low-Resource Configuration for Constrained Devices
+#
+# Optimized for robots with limited CPU, memory, or storage.
+# Reduces buffer sizes, sampling rates, and collection frequency to
+# minimize overhead while maintaining essential observability.
+
+schema_version: "0.2.0"
+
+tracing:
+  enabled: true
+  underlying_rmw: "rmw_fastrtps_cpp"
+
+  # Conservative trace sampling to reduce overhead
+  trace_rate:
+    default: 0.1  # 10% default sampling
+
+    overrides:
+      # Control commands: always trace (critical path)
+      - pattern: "^/cmd_vel$"
+        rate: 1.0
+
+      # Diagnostics: always trace
+      - pattern: "^/diagnostics$"
+        rate: 1.0
+
+  correlation:
+    timestamp_tolerance_ns: 20000000  # 20ms (more lenient)
+    window_secs: 15  # Reduced window to save memory
+    hash_enabled: false  # Disabled to reduce CPU overhead
+
+  clock:
+    max_acceptable_skew_ns: 20000000  # 20ms (more lenient)
+    check_interval_secs: 120  # Less frequent checks
+
+  diagnostics:
+    enabled: true
+    interval_secs: 30  # Less frequent publishing
+
+  performance:
+    queue_size: 512  # Reduced buffer size
+    failure_threshold: 50
+
+subscriptions:
+  default_strategy: "adaptive"
+  default_target_hz: 5.0  # Reduced from 10.0
+
+  adaptive:
+    high_bandwidth_threshold_bps: 1048576
+    high_bandwidth_target_hz: 0.5  # Very aggressive downsampling
+    low_bandwidth_threshold_bps: 10240
+    low_bandwidth_strategy: "on_change"
+    medium_bandwidth_target_hz: 2.0  # Reduced from 10.0
+
+metrics:
+  enabled: true
+  collection_interval_secs: 30  # Less frequent collection
+
+  # Reduce per-process metrics
+  process_top_n: 10  # Reduced from 25
+  include_process_cmdline: false
+
+tf:
+  enabled: true
+  snapshot_hz: 5.0  # Reduced from 10.0
+  max_transforms: 5000  # Reduced from 10000
+
+logging:
+  level: "warn"  # Reduce log verbosity
+  capture_rosout: true
+
+log_retention:
+  delete_after_upload: true
+  max_local_storage_mb: 200  # Reduced from 500
+  max_age_days: 7  # Reduced from 30

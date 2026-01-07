@@ -70,3 +70,77 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Release Notes" >> $GITHUB_STEP_SUMMARY
           cat release_notes.md >> $GITHUB_STEP_SUMMARY
+
+  publish-packages:
+    runs-on: ubuntu-latest
+    needs: release
+    if: ${{ !inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Generate code
+        run: |
+          buf generate
+          python3 tools/robotops-codegen/main.py
+
+      # TODO: Publish Rust crate to Cloudsmith
+      # Requires:
+      #   1. Cloudsmith Cargo repository set up (robotopsinc/robotops-config-rust)
+      #   2. CLOUDSMITH_API_KEY secret configured
+      #   3. Cargo.toml in generated/rust/ with proper metadata
+      # - name: Publish Rust crate
+      #   env:
+      #     CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+      #   run: |
+      #     cd generated/rust
+      #     # Update version in Cargo.toml
+      #     sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/" Cargo.toml
+      #     # Configure Cloudsmith registry
+      #     # cargo publish --registry cloudsmith
+
+      # TODO: Publish C++ package to Cloudsmith
+      # Requires:
+      #   1. Cloudsmith Conan repository set up (robotopsinc/robotops-config-cpp)
+      #   2. CLOUDSMITH_API_KEY secret configured
+      #   3. conanfile.py in generated/cpp/ with proper metadata
+      # - name: Publish C++ package
+      #   env:
+      #     CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+      #   run: |
+      #     cd generated/cpp
+      #     # Create and upload Conan package
+      #     # conan create . robotops-config/${{ steps.version.outputs.version }}@
+      #     # conan upload robotops-config/${{ steps.version.outputs.version }}@ --remote cloudsmith
+
+      - name: Summary
+        run: |
+          echo "## Package Publishing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### TODO: Complete Cloudsmith Setup" >> $GITHUB_STEP_SUMMARY
+          echo "1. Create Cloudsmith Cargo repository: robotopsinc/robotops-config-rust" >> $GITHUB_STEP_SUMMARY
+          echo "2. Create Cloudsmith Conan repository: robotopsinc/robotops-config-cpp" >> $GITHUB_STEP_SUMMARY
+          echo "3. Add CLOUDSMITH_API_KEY to GitHub secrets" >> $GITHUB_STEP_SUMMARY
+          echo "4. Add Cargo.toml to generated/rust/" >> $GITHUB_STEP_SUMMARY
+          echo "5. Add conanfile.py to generated/cpp/" >> $GITHUB_STEP_SUMMARY
+          echo "6. Uncomment publishing steps in this workflow" >> $GITHUB_STEP_SUMMARY

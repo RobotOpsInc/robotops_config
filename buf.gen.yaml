@@ -1,0 +1,28 @@
+version: v2
+clean: true
+managed:
+  enabled: true
+  override:
+    # Don't modify go_package options (we're not generating Go)
+    - file_option: go_package_prefix
+      value: ""
+
+plugins:
+  # Rust generation via prost
+  - remote: buf.build/community/neoeinstein-prost:v0.4.0
+    out: generated/rust
+    opt:
+      - compile_well_known_types
+      - file_descriptor_set
+
+  # C++ generation via protobuf
+  - protoc_builtin: cpp
+    out: generated/cpp
+    opt:
+      - speed
+
+  # Custom defaults generator runs separately after buf generate
+  # See: python3 tools/robotops-codegen/main.py
+
+inputs:
+  - directory: proto
