@@ -4,7 +4,7 @@
 # Reduces buffer sizes, sampling rates, and collection frequency to
 # minimize overhead while maintaining essential observability.
 
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 
 tracing:
   enabled: true
@@ -12,7 +12,7 @@ tracing:
 
   # Conservative trace sampling to reduce overhead
   trace_rate:
-    default: 0.1  # 10% default sampling
+    default_rate: 0.1  # 10% default sampling
 
     overrides:
       # Control commands: always trace (critical path)

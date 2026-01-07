@@ -27,30 +27,36 @@ sudo apt install ros-jazzy-rmw-robotops
 
 ### Manual Installation
 
-Download the latest configuration directly:
+Download the versioned configuration from GitHub releases:
 
 ```bash
 # Create directory
 sudo mkdir -p /etc/robotops
 
-# Download latest config from main branch
-curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops_config/main/config/default.yaml \
-  | sudo tee /etc/robotops/config.yaml > /dev/null
+# Download a specific version (recommended - use latest release version)
+curl -L -o /etc/robotops/config.yaml \
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/config.yaml
 
-# Or download a specific version
-curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops_config/v1.0.0/config/default.yaml \
-  | sudo tee /etc/robotops/config.yaml > /dev/null
+# Or get the latest release
+LATEST_VERSION=$(curl -s https://api.github.com/repos/RobotOpsInc/robotops_config/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+curl -L -o /etc/robotops/config.yaml \
+  "https://github.com/RobotOpsInc/robotops_config/releases/download/${LATEST_VERSION}/config.yaml"
 ```
 
 ### CI/CD Usage
 
-In automated pipelines, download the config as needed:
+In automated pipelines, download the config from releases:
 
 ```yaml
 - name: Download RobotOps config
   run: |
-    mkdir -p config
-    curl -LO https://raw.githubusercontent.com/RobotOpsInc/robotops_config/v1.0.0/config/default.yaml
+    curl -L -o config.yaml \
+      https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/config.yaml
+```
+
+The predictable URL format is:
+```
+https://github.com/RobotOpsInc/robotops_config/releases/download/{tag}/config.yaml
 ```
 
 ## Usage
@@ -66,7 +72,7 @@ ros2 run my_package my_node
 
 ## Configuration Reference
 
-See the [default configuration](config/default.yaml) for detailed documentation on all available options.
+See the [auto-generated default configuration](generated/yaml/default.yaml) for detailed documentation on all available options. For example configurations, see the [examples/](examples/) directory.
 
 Key sections include:
 
@@ -118,11 +124,168 @@ robotops_config v2.0.0   ←  Breaking change: all components bump major version
 
 **Recommendation:** Always reference a specific version tag in production deployments for stability.
 
+## Architecture
+
+### Protobuf-Based Configuration
+
+As of v0.3.0, RobotOps configuration uses **Protocol Buffers** as the single source of truth with auto-generated SDKs for Rust and C++.
+
+```
+robotops_config/
+├── proto/
+│   └── robotops/config/v1/
+│       └── config.proto          # Schema with @default, @env annotations
+├── tools/
+│   └── robotops-codegen/         # Custom defaults generator
+├── generated/
+│   ├── rust/
+│   │   ├── robotops.config.v1.rs # prost-generated types
+│   │   └── defaults.rs           # Generated Default impls
+│   ├── cpp/
+│   │   ├── config.pb.h/cc        # protobuf-generated types
+│   │   └── defaults.hpp          # Generated factory functions
+│   └── yaml/
+│       └── default.yaml          # Human-readable config with docs
+├── buf.yaml                      # Buf configuration
+└── buf.gen.yaml                  # Code generation config
+```
+
+### Benefits
+
+- **Single source of truth**: Proto schema defines types, defaults, and documentation
+- **Generated SDKs**: Auto-generated Rust and C++ bindings with `Default` implementations
+- **Versioned packages**: Published to Cloudsmith for consumption by `robot_agent` and `rmw_robotops`
+- **Human-readable YAML**: Auto-generated `default.yaml` with inline documentation
+- **Breaking change detection**: `buf breaking` prevents unintentional API breakage
+
+### Code Generation
+
+The build process:
+
+1. **Proto → Rust/C++**: `buf generate` uses [prost](https://github.com/tokio-rs/prost) and protoc to generate base types
+2. **Proto comments → Defaults**: `robotops-codegen` parses structured comments to generate:
+   - Rust `Default` trait implementations
+   - C++ factory functions
+   - YAML config file with documentation
+
+**Prerequisites:**
+
+```bash
+# Install just (https://github.com/casey/just)
+brew install just               # macOS
+cargo install just              # Via Rust
+# or download from https://github.com/casey/just/releases
+
+# Install buf (https://buf.build/docs/installation)
+brew install bufbuild/buf/buf  # macOS
+# or download from https://github.com/bufbuild/buf/releases
+
+# Install Protocol Buffers compiler
+brew install protobuf           # macOS
+sudo apt install protobuf-compiler  # Ubuntu/Debian
+
+# Python 3.11+ (for robotops-codegen)
+python3 --version  # Should be 3.11 or higher
+```
+
+**Generate code locally:**
+
+```bash
+just generate
+```
+
+This runs both `buf generate` (for protobuf code) and `robotops-codegen` (for defaults, YAML, package files).
+
+**Clean generated code:**
+
+```bash
+just clean
+```
+
+### Structured Comment Annotations
+
+The proto schema uses structured comments to encode metadata:
+
+```protobuf
+// Master enable switch for distributed tracing.
+// @default true
+// @env ROBOTOPS_TRACING_ENABLED
+bool enabled = 1;
+
+// Default sampling rate for all topics (0.0 - 1.0).
+// @default 1.0
+// @min 0.0
+// @max 1.0
+double default_rate = 2;
+
+// The RMW implementation to wrap.
+// @default "rmw_fastrtps_cpp"
+// @enum rmw_fastrtps_cpp
+// @enum rmw_cyclonedds_cpp
+// @env ROBOTOPS_UNDERLYING_RMW
+string underlying_rmw = 3;
+```
+
+**Supported annotations:**
+
+| Annotation | Purpose | Example |
+|------------|---------|---------|
+| `@default` | Default value | `@default true`, `@default "rmw_fastrtps_cpp"` |
+| `@env` | Environment variable | `@env ROBOTOPS_TRACING_ENABLED` |
+| `@min` | Minimum value | `@min 0.0` |
+| `@max` | Maximum value | `@max 1.0` |
+| `@enum` | Allowed values | `@enum rmw_fastrtps_cpp` |
+| `@unit` | Unit of measurement | `@unit nanoseconds` |
+| `@example` | Example value | `@example "^/camera/.*/image_raw$"` |
+| `@section` | YAML section header | `@section Distributed Tracing` |
+
+### Consuming Generated SDKs
+
+**Rust (robot_agent):**
+
+```toml
+# Cargo.toml
+[dependencies]
+robotops-config = { version = "0.3", registry = "cloudsmith" }
+```
+
+```rust
+use robotops_config::robotops::config::v1::*;
+
+let config = Config::default();
+assert_eq!(config.schema_version, "0.2.0");
+```
+
+**C++ (rmw_robotops):**
+
+```cmake
+# CMakeLists.txt
+find_package(robotops-config REQUIRED)
+target_link_libraries(your_target robotops-config::robotops-config)
+```
+
+```cpp
+#include <robotops/config/v1/config.pb.h>
+#include <robotops/config/v1/defaults.hpp>
+
+auto config = robotops::config::v1::CreateDefaultConfig();
+```
+
 ## Development
 
 ### Versioning Workflow
 
 This repository uses a `VERSION` file as the single source of truth for the schema version.
+
+**Version Synchronization:**
+
+The following locations must **always** have matching versions:
+- `VERSION` file (e.g., `0.2.0`)
+- Proto schema: `@default "0.2.0"` annotation on `Config.schema_version` field
+- Generated YAML: `generated/yaml/default.yaml` schema_version field
+- Example YAML files (if they include schema_version)
+
+Use `just validate-versions` to verify all versions are synchronized.
 
 **Bumping versions:**
 
@@ -130,8 +293,11 @@ This repository uses a `VERSION` file as the single source of truth for the sche
 # Install just (https://just.systems)
 brew install just  # or: cargo install just
 
-# Bump version (updates VERSION, all config files, and CHANGELOG)
+# Bump version (automatically updates VERSION, YAML configs, proto @default, and regenerates code)
 just bump-version patch  # or: minor, major
+
+# Verify all versions match
+just validate-versions
 ```
 
 **Validation:**
@@ -146,16 +312,66 @@ just validate-native
 
 ### Creating Releases
 
-Releases are created manually by maintainers via GitHub Actions:
+Production releases are created manually by maintainers via GitHub Actions from the `main` branch:
 
 1. Ensure `VERSION` and `CHANGELOG.md` are updated on `main`
 2. Go to **Actions** → **Release** → **Run workflow**
-3. (Optional) Enable "Dry run" to preview without creating
-4. Click **Run workflow**
+3. Ensure "main" is selected as the branch
+4. (Optional) Enable "Dry run" to preview without creating
+5. Click **Run workflow**
+
+The workflow will fail if triggered from any branch other than `main`.
 
 The release will:
 - Create a git tag matching the VERSION (e.g., `v0.2.0`)
 - Auto-populate release notes from CHANGELOG.md
+- Publish packages to production Cloudsmith registries
+- Upload YAML config as release asset
+
+### Development Releases
+
+Development releases can be manually triggered from the `development` branch for pre-production testing.
+
+**Key Differences:**
+- **Version**: `{VERSION}-development-{SHA}` (e.g., `0.2.0-development-abc1234`)
+- **Trigger**: Manual via GitHub Actions (from `development` branch only)
+- **Registries**: Separate dev registries (`robotops-config-rust-dev`, `robotops-config-cpp-dev`)
+- **GitHub**: Marked as pre-release
+- **Purpose**: Testing only - not for production
+
+**Creating a Dev Release:**
+
+1. Merge your feature to `development` and push to GitHub
+2. Go to **Actions** → **Development Release** → **Run workflow**
+3. Select "development" from the branch dropdown
+4. Click **Run workflow**
+
+The workflow will fail if triggered from any branch other than `development`.
+
+**Using Dev Packages:**
+
+```toml
+# Rust: Add to ~/.cargo/config.toml
+[registries.cloudsmith-dev]
+index = "sparse+https://dl.cloudsmith.io/basic/robotopsinc/robotops-config-rust-dev/cargo/index.git"
+
+# Then in Cargo.toml
+[dependencies]
+robotops-config = { version = "0.2.0-development-abc1234", registry = "cloudsmith-dev" }
+```
+
+```bash
+# C++
+conan remote add cloudsmith-dev \
+  https://api.cloudsmith.io/conan/robotopsinc/robotops-config-cpp-dev/
+conan install --requires=robotops-config/0.2.0-development-abc1234@
+```
+
+```bash
+# YAML Config
+curl -L -o config.yaml \
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0-development-abc1234/config.yaml
+```
 
 ## Maintenance
 
