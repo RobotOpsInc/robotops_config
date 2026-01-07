@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.3.0] - 2026-01-07
+
+### Added
+
+- **Schema Validation**: Example YAML files are now validated against protobuf schema in CI
+  - Created `tools/validate-examples.py` for automated validation
+  - Validates that all example files conform to protobuf structure
+  - Includes snake_case to camelCase conversion for protobuf compatibility
+- **Development Release System**: Automated pre-release workflow for testing
+  - New `.github/workflows/release-dev.yml` for development releases
+  - Publishes to separate dev registries (`robotops-config-rust-dev`, `robotops-config-cpp-dev`)
+  - Version format: `{VERSION}-development-{SHORT_SHA}` (e.g., `0.3.0-development-abc1234`)
+  - Manual trigger from `development` branch only
+  - Creates GitHub pre-releases for testing before production deployment
+- **Build System Templates**: Template-based approach for Cargo.toml and conanfile.py
+  - Created `tools/templates/` directory with Rust and C++ templates
+  - Allows validation with standard tooling (cargo check, conan create)
+  - Enables proper dependency management and version locking
+  - Prevents syntax errors in generated build files
+
+### Changed
+
+- **Workflow Protections**: Enforced branch restrictions for releases
+  - Production releases (Release workflow) can only run from `main` branch
+  - Development releases can only run from `development` branch
+  - Both workflows fail with clear error messages if triggered from wrong branch
+- **YAML Generation**: Fixed formatting issues in generated default.yaml
+  - Fixed array syntax (now generates `["item"]` instead of `"["item"]"`)
+  - Improved blank line management (max 2 consecutive blank lines)
+  - Proper handling of nested message structures
+- **Example Files**: Fixed field name in trace_rate configuration
+  - Changed `default` to `default_rate` to match protobuf schema
+
+### Documentation
+
+- Updated README with development release workflow
+- Added template maintenance documentation in `tools/templates/README.md`
+- Clarified branch restrictions for production vs development releases
+
 ## [0.2.0] - 2026-01-07
 
 ### Changed
