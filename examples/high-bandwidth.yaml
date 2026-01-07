@@ -4,7 +4,7 @@
 # Aggressive sampling reduces trace and storage overhead while maintaining
 # visibility into critical control paths.
 
-schema_version: "0.3.3"
+schema_version: "0.3.4"
 
 tracing:
   enabled: true
