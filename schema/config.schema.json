@@ -66,8 +66,7 @@
       "type": "object",
       "properties": {
         "url": {
-          "type": "string",
-          "format": "uri"
+          "type": "string"
         },
         "heartbeat_interval_secs": {
           "type": "integer",
