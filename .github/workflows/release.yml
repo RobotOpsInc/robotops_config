@@ -93,6 +93,7 @@ jobs:
         run: |
           VERSION=$(cat VERSION)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Buf
         uses: bufbuild/buf-setup-action@v1
