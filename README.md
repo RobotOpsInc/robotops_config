@@ -27,30 +27,37 @@ sudo apt install ros-jazzy-rmw-robotops
 
 ### Manual Installation
 
-Download the latest configuration directly:
+Download the versioned configuration from GitHub releases:
 
 ```bash
 # Create directory
 sudo mkdir -p /etc/robotops
 
-# Download latest config from main branch
-curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops_config/main/config/default.yaml \
+# Download a specific version (recommended - use latest release version)
+curl -L https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/default.yaml \
   | sudo tee /etc/robotops/config.yaml > /dev/null
 
-# Or download a specific version
-curl -L https://raw.githubusercontent.com/RobotOpsInc/robotops_config/v1.0.0/config/default.yaml \
+# Or get the latest release
+LATEST_VERSION=$(curl -s https://api.github.com/repos/RobotOpsInc/robotops_config/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+curl -L "https://github.com/RobotOpsInc/robotops_config/releases/download/${LATEST_VERSION}/default.yaml" \
   | sudo tee /etc/robotops/config.yaml > /dev/null
 ```
 
 ### CI/CD Usage
 
-In automated pipelines, download the config as needed:
+In automated pipelines, download the config from releases:
 
 ```yaml
 - name: Download RobotOps config
   run: |
     mkdir -p config
-    curl -LO https://raw.githubusercontent.com/RobotOpsInc/robotops_config/v1.0.0/config/default.yaml
+    curl -L -o config/config.yaml \
+      https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/default.yaml
+```
+
+The predictable URL format is:
+```
+https://github.com/RobotOpsInc/robotops_config/releases/download/{tag}/default.yaml
 ```
 
 ## Usage
@@ -66,7 +73,7 @@ ros2 run my_package my_node
 
 ## Configuration Reference
 
-See the [default configuration](config/default.yaml) for detailed documentation on all available options.
+See the [auto-generated default configuration](generated/yaml/default.yaml) for detailed documentation on all available options. For example configurations, see the [examples/](examples/) directory.
 
 Key sections include:
 
@@ -162,20 +169,38 @@ The build process:
    - C++ factory functions
    - YAML config file with documentation
 
+**Prerequisites:**
+
+```bash
+# Install just (https://github.com/casey/just)
+brew install just               # macOS
+cargo install just              # Via Rust
+# or download from https://github.com/casey/just/releases
+
+# Install buf (https://buf.build/docs/installation)
+brew install bufbuild/buf/buf  # macOS
+# or download from https://github.com/bufbuild/buf/releases
+
+# Install Protocol Buffers compiler
+brew install protobuf           # macOS
+sudo apt install protobuf-compiler  # Ubuntu/Debian
+
+# Python 3.11+ (for robotops-codegen)
+python3 --version  # Should be 3.11 or higher
+```
+
 **Generate code locally:**
 
 ```bash
-# Requires: buf, protoc, python3
-buf generate
-python3 tools/robotops-codegen/main.py
+just generate
 ```
 
-**Verify generated code is up to date:**
+This runs both `buf generate` (for protobuf code) and `robotops-codegen` (for defaults, YAML, package files).
+
+**Clean generated code:**
 
 ```bash
-buf generate
-python3 tools/robotops-codegen/main.py
-git diff generated/  # Should show no changes
+just clean
 ```
 
 ### Structured Comment Annotations
@@ -253,14 +278,27 @@ auto config = robotops::config::v1::CreateDefaultConfig();
 
 This repository uses a `VERSION` file as the single source of truth for the schema version.
 
+**Version Synchronization:**
+
+The following locations must **always** have matching versions:
+- `VERSION` file (e.g., `0.2.0`)
+- Proto schema: `@default "0.2.0"` annotation on `Config.schema_version` field
+- Generated YAML: `generated/yaml/default.yaml` schema_version field
+- Example YAML files (if they include schema_version)
+
+Use `just validate-versions` to verify all versions are synchronized.
+
 **Bumping versions:**
 
 ```bash
 # Install just (https://just.systems)
 brew install just  # or: cargo install just
 
-# Bump version (updates VERSION, all config files, and CHANGELOG)
+# Bump version (automatically updates VERSION, YAML configs, proto @default, and regenerates code)
 just bump-version patch  # or: minor, major
+
+# Verify all versions match
+just validate-versions
 ```
 
 **Validation:**

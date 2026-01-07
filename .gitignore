@@ -1,5 +1,3 @@
-# Generated SDK code (built during CI/CD)
-generated/sdks/
-
-# Keep the YAML config for documentation
-!generated/yaml/
+# All generated code (built during CI/CD)
+# YAML config is published as release asset with predictable URL
+generated/

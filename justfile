@@ -1,4 +1,18 @@
-# Version management for robotops_config
+# Version management and code generation for robotops_config
+
+# Generate all code from proto schema (Rust, C++, YAML)
+generate:
+    @echo "Generating code from proto schema..."
+    buf generate
+    python3 tools/robotops-codegen/main.py
+    @echo ""
+    @echo "✅ Code generation complete"
+
+# Clean all generated code
+clean:
+    @echo "Cleaning generated code..."
+    rm -rf generated/
+    @echo "✅ Cleaned generated/ directory"
 
 # Bump version across all config files
 bump-version LEVEL:
@@ -24,8 +38,22 @@ bump-version LEVEL:
     # Update VERSION file
     echo "$NEW_VERSION" > VERSION
 
-    # Update all config files
-    find config -name "*.yaml" -exec sed -i '' "s/schema_version: \"$CURRENT\"/schema_version: \"$NEW_VERSION\"/" {} \;
+    # Update example files (if any still have schema_version)
+    find examples -name "*.yaml" -exec sed -i '' "s/schema_version: \"$CURRENT\"/schema_version: \"$NEW_VERSION\"/" {} \; 2>/dev/null || true
+
+    # Update proto @default annotation
+    if [ -f "proto/robotops/config/v1/config.proto" ]; then
+        sed -i '' "s/@default \"$CURRENT\"/@default \"$NEW_VERSION\"/g" proto/robotops/config/v1/config.proto
+    fi
+
+    # Regenerate code to update generated/yaml/default.yaml
+    if command -v just &> /dev/null; then
+        echo "Regenerating code..."
+        just generate 2>/dev/null || echo "Warning: code generation failed"
+    else
+        echo "Warning: just not found - skipping code regeneration"
+        echo "  Run manually: just generate"
+    fi
 
     # Update CHANGELOG (add new section header if not exists)
     DATE=$(date +%Y-%m-%d)
@@ -48,14 +76,17 @@ bump-version LEVEL:
 
     echo "Updated:"
     echo "  - VERSION"
-    echo "  - config/*.yaml and config/examples/*.yaml"
+    echo "  - examples/*.yaml (if they contain schema_version)"
+    echo "  - proto/robotops/config/v1/config.proto (@default annotation)"
+    echo "  - generated/yaml/default.yaml (regenerated)"
     echo "  - CHANGELOG.md (added section for $NEW_VERSION)"
     echo ""
     echo "Next steps:"
-    echo "  1. Edit CHANGELOG.md to describe changes"
-    echo "  2. Commit: git add -A && git commit -m 'chore: bump schema version to $NEW_VERSION'"
-    echo "  3. Tag: git tag v$NEW_VERSION"
-    echo "  4. Push: git push && git push --tags"
+    echo "  1. Verify: just validate-versions"
+    echo "  2. Edit CHANGELOG.md to describe changes"
+    echo "  3. Commit: git add -A && git commit -m 'chore: bump schema version to $NEW_VERSION'"
+    echo "  4. Tag: git tag v$NEW_VERSION"
+    echo "  5. Push: git push && git push --tags"
 
 # Validate all schema_versions match VERSION file
 validate-versions:
@@ -68,15 +99,57 @@ validate-versions:
     echo "Expected version: $EXPECTED"
     echo ""
 
-    for f in config/*.yaml config/examples/*.yaml; do
-        ACTUAL=$(grep -E '^schema_version:' "$f" | sed 's/schema_version: *"\([^"]*\)"/\1/')
-        if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "MISMATCH: $f has schema_version: \"$ACTUAL\""
-            EXIT_CODE=1
-        else
-            echo "OK: $f"
+    # Check example YAML files (if they have schema_version)
+    for f in examples/*.yaml; do
+        if [ -f "$f" ] && grep -q '^schema_version:' "$f" 2>/dev/null; then
+            ACTUAL=$(grep -E '^schema_version:' "$f" | sed 's/schema_version: *"\([^"]*\)"/\1/')
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+                echo "MISMATCH: $f has schema_version: \"$ACTUAL\""
+                EXIT_CODE=1
+            else
+                echo "OK: $f"
+            fi
         fi
     done
+
+    # Check proto @default annotation for schema_version field
+    if [ -f "proto/robotops/config/v1/config.proto" ]; then
+        # Extract the @default value from the first occurrence (schema_version field in Config message)
+        PROTO_VERSION=$(grep '@default "0' proto/robotops/config/v1/config.proto | head -1 | sed 's/.*@default "\([^"]*\)".*/\1/')
+        if [ -z "$PROTO_VERSION" ]; then
+            echo "ERROR: Could not extract proto schema_version @default"
+            EXIT_CODE=1
+        elif [ "$PROTO_VERSION" != "$EXPECTED" ]; then
+            echo "MISMATCH: proto/robotops/config/v1/config.proto has @default \"$PROTO_VERSION\""
+            EXIT_CODE=1
+        else
+            echo "OK: proto/robotops/config/v1/config.proto"
+        fi
+    fi
+
+    # Check generated YAML
+    if [ -f "generated/yaml/default.yaml" ]; then
+        GEN_VERSION=$(grep -E '^schema_version:' generated/yaml/default.yaml | sed 's/schema_version: *"\([^"]*\)"/\1/')
+        if [ "$GEN_VERSION" != "$EXPECTED" ]; then
+            echo "MISMATCH: generated/yaml/default.yaml has schema_version: \"$GEN_VERSION\""
+            echo "  (Run: just generate)"
+            EXIT_CODE=1
+        else
+            echo "OK: generated/yaml/default.yaml"
+        fi
+    fi
+
+    echo ""
+    if [ $EXIT_CODE -eq 0 ]; then
+        echo "All versions match: $EXPECTED"
+    else
+        echo "Version mismatches found! Expected: $EXPECTED"
+        echo ""
+        echo "To fix:"
+        echo "  1. Update VERSION file: just bump-version patch|minor|major"
+        echo "  2. Update proto: edit proto/robotops/config/v1/config.proto @default annotation"
+        echo "  3. Regenerate: just generate"
+    fi
 
     exit $EXIT_CODE
 
@@ -85,25 +158,17 @@ validate: validate-versions
     docker build -f Dockerfile.validate -t robotops-config-validate .
     docker run --rm -v {{justfile_directory()}}:/workspace robotops-config-validate
 
-# Run validations natively (requires ajv-cli and yamllint installed locally)
+# Run validations natively (requires yamllint installed locally)
 validate-native: validate-versions
     #!/usr/bin/env bash
     set -euo pipefail
 
     # Check for required tools
-    if ! command -v ajv &> /dev/null; then
-        echo "Error: ajv-cli not found. Install with: npm install -g ajv-cli"
-        exit 1
-    fi
     if ! command -v yamllint &> /dev/null; then
         echo "Error: yamllint not found. Install with: pip3 install --user yamllint"
         exit 1
     fi
 
     # Run validations
-    ajv validate -s schema/config.schema.json -d config/default.yaml
-    ajv validate -s schema/config.schema.json -d config/minimal.yaml
-    for f in config/examples/*.yaml; do
-        ajv validate -s schema/config.schema.json -d "$f"
-    done
-    yamllint config/
+    yamllint generated/yaml/
+    yamllint examples/

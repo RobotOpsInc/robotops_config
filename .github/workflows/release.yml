@@ -97,39 +97,65 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Generate code
+        run: just generate
+
+      - name: Upload YAML config as release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          buf generate
-          python3 tools/robotops-codegen/main.py
+          # Upload YAML file to GitHub release
+          gh release upload "${{ steps.version.outputs.tag }}" \
+            generated/yaml/default.yaml \
+            --clobber
 
-      # TODO: Publish Rust crate to Cloudsmith
-      # Requires:
-      #   1. Cloudsmith Cargo repository set up (robotopsinc/robotops-config-rust)
-      #   2. CLOUDSMITH_API_KEY secret configured
-      #   3. Cargo.toml in generated/rust/ with proper metadata
-      # - name: Publish Rust crate
-      #   env:
-      #     CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
-      #   run: |
-      #     cd generated/rust
-      #     # Update version in Cargo.toml
-      #     sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/" Cargo.toml
-      #     # Configure Cloudsmith registry
-      #     # cargo publish --registry cloudsmith
+          echo "✅ Uploaded default.yaml to release ${{ steps.version.outputs.tag }}"
+          echo ""
+          echo "Public download URL:"
+          echo "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/default.yaml"
 
-      # TODO: Publish C++ package to Cloudsmith
-      # Requires:
-      #   1. Cloudsmith Conan repository set up (robotopsinc/robotops-config-cpp)
-      #   2. CLOUDSMITH_API_KEY secret configured
-      #   3. conanfile.py in generated/cpp/ with proper metadata
-      # - name: Publish C++ package
-      #   env:
-      #     CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
-      #   run: |
-      #     cd generated/cpp
-      #     # Create and upload Conan package
-      #     # conan create . robotops-config/${{ steps.version.outputs.version }}@
-      #     # conan upload robotops-config/${{ steps.version.outputs.version }}@ --remote cloudsmith
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish Rust crate to Cloudsmith
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+        run: |
+          cd generated/sdks/rust
+
+          # Configure Cloudsmith as a cargo registry
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml <<EOF
+          [registries.cloudsmith]
+          index = "sparse+https://dl.cloudsmith.io/basic/robotopsinc/robotops-config-rust/cargo/index.git"
+
+          [registry.cloudsmith]
+          token = "Bearer ${CLOUDSMITH_API_KEY}"
+          EOF
+
+          # Publish to Cloudsmith
+          cargo publish --registry cloudsmith --allow-dirty
+
+      - name: Install Conan
+        run: |
+          pip3 install conan
+
+      - name: Publish C++ package to Cloudsmith
+        env:
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+        run: |
+          cd generated/sdks/cpp
+
+          # Configure Cloudsmith remote
+          conan remote add cloudsmith https://api.cloudsmith.io/conan/robotopsinc/robotops-config-cpp/ || true
+          conan remote login cloudsmith -p "${CLOUDSMITH_API_KEY}" token
+
+          # Create and upload package
+          conan create . --version=${{ steps.version.outputs.version }}
+          conan upload "robotops-config/${{ steps.version.outputs.version }}" -r cloudsmith --all
 
       - name: Summary
         run: |
@@ -137,10 +163,26 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### TODO: Complete Cloudsmith Setup" >> $GITHUB_STEP_SUMMARY
-          echo "1. Create Cloudsmith Cargo repository: robotopsinc/robotops-config-rust" >> $GITHUB_STEP_SUMMARY
-          echo "2. Create Cloudsmith Conan repository: robotopsinc/robotops-config-cpp" >> $GITHUB_STEP_SUMMARY
-          echo "3. Add CLOUDSMITH_API_KEY to GitHub secrets" >> $GITHUB_STEP_SUMMARY
-          echo "4. Add Cargo.toml to generated/rust/" >> $GITHUB_STEP_SUMMARY
-          echo "5. Add conanfile.py to generated/cpp/" >> $GITHUB_STEP_SUMMARY
-          echo "6. Uncomment publishing steps in this workflow" >> $GITHUB_STEP_SUMMARY
+          echo "### Published Packages" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Rust crate: https://cloudsmith.io/~robotopsinc/repos/robotops-config-rust/packages/" >> $GITHUB_STEP_SUMMARY
+          echo "✅ C++ package: https://cloudsmith.io/~robotopsinc/repos/robotops-config-cpp/packages/" >> $GITHUB_STEP_SUMMARY
+          echo "✅ YAML config: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/default.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Rust:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`toml" >> $GITHUB_STEP_SUMMARY
+          echo "[dependencies]" >> $GITHUB_STEP_SUMMARY
+          echo "robotops-config = { version = \"${{ steps.version.outputs.version }}\", registry = \"cloudsmith\" }" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**C++:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "conan install --requires=robotops-config/${{ steps.version.outputs.version }}@" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**YAML Config:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Download versioned configuration" >> $GITHUB_STEP_SUMMARY
+          echo "curl -L -o config.yaml https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/default.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

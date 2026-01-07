@@ -10,14 +10,14 @@ managed:
 plugins:
   # Rust generation via prost
   - remote: buf.build/community/neoeinstein-prost:v0.4.0
-    out: generated/rust
+    out: generated/sdks/rust
     opt:
       - compile_well_known_types
       - file_descriptor_set
 
   # C++ generation via protobuf
   - protoc_builtin: cpp
-    out: generated/cpp
+    out: generated/sdks/cpp
     opt:
       - speed
 
