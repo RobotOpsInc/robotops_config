@@ -1,0 +1,116 @@
+# Nav2-Optimized Configuration
+#
+# Tuned for autonomous navigation using ROS 2 Nav2.
+# Prioritizes tracing for navigation-critical topics while reducing
+# overhead for high-frequency sensor data.
+
+schema_version: "0.1.1"
+
+tracing:
+  enabled: true
+  underlying_rmw: "rmw_fastrtps_cpp"
+
+  # Optimized sampling for Nav2 topics
+  trace_rate:
+    default: 1.0
+
+    overrides:
+      # Sensor inputs: reduced sampling
+      - pattern: "^/scan$"
+        rate: 0.1
+      - pattern: "^/camera/.*/image_raw$"
+        rate: 0.01
+
+      # Critical Nav2 topics: always trace
+      - pattern: "^/cmd_vel$"
+        rate: 1.0
+      - pattern: "^/plan$"
+        rate: 1.0
+      - pattern: "^/global_costmap/.*"
+        rate: 1.0
+      - pattern: "^/local_costmap/.*"
+        rate: 1.0
+      - pattern: "^/navigate_to_pose/_action/.*"
+        rate: 1.0
+      - pattern: "^/follow_path/_action/.*"
+        rate: 1.0
+      - pattern: "^/compute_path_to_pose/_action/.*"
+        rate: 1.0
+
+      # Localization: full tracing
+      - pattern: "^/amcl_pose$"
+        rate: 1.0
+      - pattern: "^/initialpose$"
+        rate: 1.0
+      - pattern: "^/particle_cloud$"
+        rate: 0.1
+
+      # Behavior tree: always trace
+      - pattern: "^/behavior_tree_log$"
+        rate: 1.0
+
+      # Diagnostics: always trace
+      - pattern: "^/diagnostics$"
+        rate: 1.0
+
+  correlation:
+    timestamp_tolerance_ns: 10000000
+    window_secs: 30
+    hash_enabled: true
+
+  clock:
+    max_acceptable_skew_ns: 10000000
+    check_interval_secs: 60
+
+  diagnostics:
+    enabled: true
+    interval_secs: 10
+
+  performance:
+    queue_size: 1024
+    failure_threshold: 100
+
+subscriptions:
+  default_strategy: "adaptive"
+
+  # Nav2-specific overrides
+  topic_overrides:
+    # Critical control and navigation topics: capture all
+    - pattern: "^/cmd_vel$"
+      strategy: "all"
+
+    - pattern: "^/plan$"
+      strategy: "all"
+
+    - pattern: "^/amcl_pose$"
+      strategy: "all"
+
+    # Costmaps: on_change (only when updated)
+    - pattern: "^/global_costmap/costmap$"
+      strategy: "on_change"
+
+    - pattern: "^/local_costmap/costmap$"
+      strategy: "on_change"
+
+    # LiDAR: rate limited
+    - pattern: "^/scan$"
+      strategy: "rate_limit"
+      target_hz: 5.0
+
+    # Camera: aggressive rate limiting
+    - pattern: "^/camera/.*/image_raw$"
+      strategy: "rate_limit"
+      target_hz: 1.0
+
+metrics:
+  enabled: true
+  collection_interval_secs: 10
+
+tf:
+  enabled: true
+  snapshot_hz: 10.0
+  max_transforms: 10000
+
+logging:
+  level: "info"
+  capture_rosout: true

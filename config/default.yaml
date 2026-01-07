@@ -1,5 +1,17 @@
 # Robot Agent Configuration
 
+# ===== CONFIGURATION VERSION =====
+#
+# Schema version for configuration compatibility checking.
+# Components validate that the major version matches their supported version.
+# All v1.x.x configs are compatible with all v1.x.x components.
+#
+# Format: semver (MAJOR.MINOR.PATCH)
+# - MAJOR: Breaking changes (field removal, type changes, required fields)
+# - MINOR: New optional fields (backward compatible)
+# - PATCH: Documentation or default value changes
+schema_version: "0.1.1"
+
 # ===== ROBOT IDENTITY =====
 #
 # Uniquely identifies this robot within your organization for billing (robot-hours)
@@ -109,6 +121,224 @@
 #   # Default: 60 seconds
 #   # Environment variable: ROBOT_OPS_AGENT_BACKEND_MAX_BACKOFF_SECS
 #   # max_backoff_secs: 60
+
+# ===== DISTRIBUTED TRACING =====
+#
+# Configuration for rmw_robotops distributed tracing and robot_agent trace correlation.
+#
+# Distributed tracing creates causal links between publish/subscribe/service/action
+# calls across ROS2 nodes, enabling end-to-end latency analysis and debugging.
+# This is separate from message capture (subscriptions:) which controls payload storage.
+#
+# ## How It Works
+#
+# 1. rmw_robotops intercepts ROS2 communication at the RMW layer
+# 2. On publish: mints trace_id (if sampled), attaches context, emits TraceEvent
+# 3. On subscribe: extracts context (FastDDS) or correlates (fallback), emits TraceEvent
+# 4. robot_agent subscribes to /robotops/trace_events, correlates, exports to OTel
+#
+# ## Relationship to subscriptions:
+#
+# - subscriptions.topic_overrides: Controls message PAYLOAD capture for replay
+# - tracing.trace_rate.overrides: Controls TRACE CONTEXT creation for causal analysis
+#
+# A message can be captured but not traced, traced but not captured, both, or neither.
+
+tracing:
+  # ===== MASTER ENABLE SWITCH =====
+  #
+  # When false, rmw_robotops acts as a pure passthrough to the underlying RMW
+  # with zero overhead. No trace context is created, no TraceEvents are emitted.
+  #
+  # Use this to completely disable tracing without uninstalling rmw_robotops.
+  #
+  # Default: true
+  # Environment variable: ROBOTOPS_TRACING_ENABLED
+  enabled: true
+
+  # ===== UNDERLYING RMW =====
+  #
+  # The RMW implementation that rmw_robotops wraps and delegates to.
+  # rmw_robotops intercepts calls for tracing, then forwards to this RMW
+  # for actual DDS communication.
+  #
+  # Common values:
+  # - "rmw_fastrtps_cpp" (Fast DDS, default for ROS2 Jazzy)
+  # - "rmw_cyclonedds_cpp" (Cyclone DDS)
+  # - "rmw_connextdds" (RTI Connext)
+  #
+  # Default: "rmw_fastrtps_cpp"
+  # Environment variable: ROBOTOPS_UNDERLYING_RMW
+  underlying_rmw: "rmw_fastrtps_cpp"
+
+  # ===== HEAD-BASED TRACE SAMPLING =====
+  #
+  # Controls whether rmw_robotops creates a new trace for a given publish.
+  # This is "head-based" sampling: the decision is made at trace creation time
+  # (the "head" of the trace), and all downstream spans inherit that decision.
+  #
+  # This is different from subscriptions.topic_overrides which controls message
+  # payload capture. A high-frequency sensor might have:
+  # - trace_rate: 0.01 (1% of publishes start a trace)
+  # - subscriptions capture: 2 Hz (payloads stored for replay)
+  #
+  # The trace_rate controls distributed tracing overhead and trace storage volume.
+  # The subscriptions capture controls message payload storage volume.
+  trace_rate:
+    # Default sampling rate for all topics (0.0 - 1.0).
+    #
+    # - 1.0: Every publish creates a trace (100% sampling)
+    # - 0.1: 10% of publishes create traces
+    # - 0.0: No traces created (effectively disables tracing)
+    #
+    # For most robots, 1.0 is fine. Reduce for high-frequency sensors or
+    # when trace storage volume is a concern.
+    #
+    # Default: 1.0
+    default: 1.0
+
+    # Per-topic sampling rate overrides (first matching pattern wins).
+    #
+    # Use this to reduce trace volume for high-frequency topics while keeping
+    # full tracing for critical control paths.
+    #
+    # Pattern syntax: regex (must match full topic name)
+    # Rate: 0.0 - 1.0
+    #
+    # Example:
+    # overrides:
+    #   # Camera images: trace 1% (high bandwidth, low value per trace)
+    #   - pattern: "^/camera/.*/image_raw$"
+    #     rate: 0.01
+    #
+    #   # LiDAR scans: trace 10%
+    #   - pattern: "^/scan$"
+    #     rate: 0.1
+    #
+    #   # Control commands: always trace (critical path)
+    #   - pattern: "^/cmd_vel$"
+    #     rate: 1.0
+    #
+    #   # Diagnostics: always trace
+    #   - pattern: "^/diagnostics$"
+    #     rate: 1.0
+    #
+    # Default: [] (no overrides, use default rate)
+    # overrides: []
+
+  # ===== CROSS-PROCESS CORRELATION =====
+  #
+  # Configuration for robot_agent's trace correlation engine.
+  # When FastDDS SHM metadata extraction is unavailable, the agent falls back
+  # to timestamp-based correlation to match publish events with subscribe events.
+  #
+  # These settings control the fallback correlation behavior.
+  correlation:
+    # Maximum time difference (nanoseconds) between publish and subscribe timestamps
+    # for them to be considered the same message.
+    #
+    # Larger values: more lenient matching, may create false correlations
+    # Smaller values: stricter matching, may miss valid correlations
+    #
+    # 10ms works well for most robots. Increase if you see missed correlations
+    # in high-latency scenarios (e.g., network-bridged robots).
+    #
+    # Default: 10000000 (10ms)
+    timestamp_tolerance_ns: 10000000
+
+    # How long (seconds) to keep publish events in the correlation window.
+    #
+    # The agent maintains a sliding window of recent publish events to match
+    # against incoming subscribe events. Longer windows use more memory but
+    # handle delayed message delivery better.
+    #
+    # Default: 30 seconds
+    window_secs: 30
+
+    # Use content hash (xxHash64 of first 64 bytes) to disambiguate when multiple
+    # publish events have similar timestamps.
+    #
+    # When enabled, correlation uses (topic, timestamp, hash) instead of just
+    # (topic, timestamp). This prevents false correlations when the same topic
+    # has multiple publishers at high frequency.
+    #
+    # Disable only if hash computation overhead is problematic (very unlikely).
+    #
+    # Default: true
+    hash_enabled: true
+
+  # ===== CLOCK SYNCHRONIZATION =====
+  #
+  # Distributed tracing relies on synchronized clocks across nodes.
+  # These settings control clock skew detection and diagnostics.
+  #
+  # Clock skew can cause:
+  # - Incorrect span ordering in trace visualization
+  # - Failed correlations (if skew exceeds timestamp_tolerance_ns)
+  # - Misleading latency measurements
+  clock:
+    # Maximum acceptable clock skew (nanoseconds) before warning.
+    #
+    # rmw_robotops periodically checks clock consistency and emits warnings
+    # when skew exceeds this threshold. The check compares system clock
+    # against ROS time and against other nodes (via trace event timestamps).
+    #
+    # Default: 10000000 (10ms)
+    max_acceptable_skew_ns: 10000000
+
+    # How often (seconds) to perform clock synchronization checks.
+    #
+    # Default: 60 seconds
+    check_interval_secs: 60
+
+  # ===== DIAGNOSTICS PUBLISHING =====
+  #
+  # rmw_robotops can publish periodic health metrics to a ROS2 topic for
+  # monitoring and debugging. robot_agent subscribes to this topic and
+  # exports diagnostics alongside traces.
+  #
+  # Published to: /robotops/diagnostics (DiagnosticsReport.msg)
+  diagnostics:
+    # Enable/disable diagnostics topic publishing.
+    #
+    # Default: true
+    enabled: true
+
+    # How often (seconds) to publish diagnostics.
+    #
+    # Lower values: more granular monitoring, slightly more overhead
+    # Higher values: less overhead, coarser monitoring
+    #
+    # Default: 10 seconds
+    interval_secs: 10
+
+  # ===== PERFORMANCE TUNING =====
+  #
+  # Advanced settings for rmw_robotops performance. Most users should not
+  # need to change these defaults.
+  performance:
+    # Internal queue depth for trace events before publishing to ROS2 topic.
+    #
+    # rmw_robotops buffers trace events in a lock-free queue to avoid blocking
+    # the ROS2 publish/subscribe hot path. If the queue fills up (agent not
+    # consuming fast enough), oldest events are dropped.
+    #
+    # Increase if you see "trace event queue full" warnings.
+    # Decrease to reduce memory footprint on constrained devices.
+    #
+    # Default: 1024
+    queue_size: 1024
+
+    # Auto-disable tracing after this many consecutive failures.
+    #
+    # If trace event publishing fails repeatedly (e.g., topic not available),
+    # rmw_robotops automatically disables tracing to prevent log spam and
+    # wasted resources. Manual re-enable requires restart.
+    #
+    # Set to 0 to disable auto-disable (not recommended).
+    #
+    # Default: 100
+    failure_threshold: 100
 
 discovery:
   # How often to poll for new topics/nodes (seconds)

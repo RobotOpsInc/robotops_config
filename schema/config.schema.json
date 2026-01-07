@@ -1,0 +1,624 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://robotops.dev/schemas/config.v1.schema.json",
+  "title": "RobotOps Configuration Schema",
+  "description": "Configuration schema for RobotOps distributed tracing and monitoring",
+  "type": "object",
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the configuration schema"
+    },
+    "robot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "nickname": {
+          "type": "string"
+        },
+        "fleet_id": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "maxProperties": 20,
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]{1,64}$": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "api_key": {
+          "type": "string",
+          "pattern": "^sk_"
+        },
+        "api_key_file": {
+          "type": "string"
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "heartbeat_interval_secs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_retry_attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "initial_backoff_secs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_backoff_secs": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "tracing": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master enable switch for distributed tracing"
+        },
+        "underlying_rmw": {
+          "type": "string",
+          "enum": ["rmw_fastrtps_cpp", "rmw_cyclonedds_cpp", "rmw_connextdds"],
+          "description": "The RMW implementation to wrap"
+        },
+        "trace_rate": {
+          "type": "object",
+          "properties": {
+            "default": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Default sampling rate for all topics"
+            },
+            "overrides": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["pattern", "rate"],
+                "properties": {
+                  "pattern": {
+                    "type": "string",
+                    "description": "Regex pattern to match topic names"
+                  },
+                  "rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Sampling rate for matching topics"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "correlation": {
+          "type": "object",
+          "properties": {
+            "timestamp_tolerance_ns": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum time difference for correlation (nanoseconds)"
+            },
+            "window_secs": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Correlation window duration (seconds)"
+            },
+            "hash_enabled": {
+              "type": "boolean",
+              "description": "Use content hash for disambiguation"
+            }
+          }
+        },
+        "clock": {
+          "type": "object",
+          "properties": {
+            "max_acceptable_skew_ns": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum acceptable clock skew (nanoseconds)"
+            },
+            "check_interval_secs": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Clock check interval (seconds)"
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "interval_secs": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "performance": {
+          "type": "object",
+          "properties": {
+            "queue_size": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failure_threshold": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "properties": {
+        "poll_interval_secs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "topic_filters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topic_blacklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "collection_interval_secs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "autodetect_interval_secs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "topic_metrics": {
+          "type": "boolean"
+        },
+        "action_service_metrics": {
+          "type": "boolean"
+        },
+        "infrastructure_metrics": {
+          "type": "boolean"
+        },
+        "process_metrics": {
+          "type": "boolean"
+        },
+        "temperature_metrics": {
+          "type": "boolean"
+        },
+        "battery_metrics": {
+          "type": "boolean"
+        },
+        "network_quality_metrics": {
+          "type": "boolean"
+        },
+        "process_top_n": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "include_process_cmdline": {
+          "type": "boolean"
+        }
+      }
+    },
+    "subscriptions": {
+      "type": "object",
+      "properties": {
+        "default_strategy": {
+          "type": "string",
+          "enum": ["adaptive", "all", "on_change", "rate_limit", "sample"]
+        },
+        "default_target_hz": {
+          "type": "number",
+          "minimum": 0
+        },
+        "adaptive": {
+          "type": "object",
+          "properties": {
+            "high_bandwidth_threshold_bps": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "high_bandwidth_target_hz": {
+              "type": "number",
+              "minimum": 0
+            },
+            "low_bandwidth_threshold_bps": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "low_bandwidth_strategy": {
+              "type": "string",
+              "enum": ["all", "on_change", "rate_limit", "sample"]
+            },
+            "medium_bandwidth_target_hz": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "topic_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pattern", "strategy"],
+            "properties": {
+              "pattern": {
+                "type": "string"
+              },
+              "strategy": {
+                "type": "string",
+                "enum": ["all", "on_change", "rate_limit", "sample"]
+              },
+              "target_hz": {
+                "type": "number",
+                "minimum": 0
+              },
+              "sample_percentage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "tf": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "snapshot_hz": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_transforms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "verbose": {
+          "type": "boolean"
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["all", "on_change", "rate_limit", "sample"]
+            },
+            "target_hz": {
+              "type": "number",
+              "minimum": 0
+            },
+            "sample_percentage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "max_payload_bytes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "services": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["all", "on_change", "rate_limit", "sample"]
+            },
+            "target_hz": {
+              "type": "number",
+              "minimum": 0
+            },
+            "sample_percentage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "max_payload_bytes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "capture_rosout": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["trace", "debug", "info", "warn", "error"]
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "human"]
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "stdout": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "format": {
+                  "type": "string",
+                  "enum": ["json", "human"]
+                }
+              }
+            },
+            "file": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "max_size_mb": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_files": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "format": {
+                  "type": "string",
+                  "enum": ["json", "human"]
+                }
+              }
+            },
+            "journald": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": ["boolean", "string"],
+                  "enum": [true, false, "auto"]
+                }
+              }
+            }
+          }
+        },
+        "module_filters": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": {
+              "type": "string",
+              "enum": ["trace", "debug", "info", "warn", "error"]
+            }
+          }
+        },
+        "include_line_numbers": {
+          "type": "boolean"
+        },
+        "include_thread_ids": {
+          "type": "boolean"
+        }
+      }
+    },
+    "log_retention": {
+      "type": "object",
+      "properties": {
+        "delete_after_upload": {
+          "type": "boolean"
+        },
+        "max_local_storage_mb": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "system_logs": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "on_unavailable": {
+          "type": "string",
+          "enum": ["warn", "ignore"]
+        },
+        "journald": {
+          "type": "object",
+          "properties": {
+            "min_priority": {
+              "type": "string",
+              "enum": ["emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"]
+            },
+            "units": {
+              "type": "object",
+              "properties": {
+                "include": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "sources": {
+              "type": "object",
+              "properties": {
+                "kernel": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "min_priority": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "systemd": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "min_priority": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "network": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "min_priority": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "min_priority": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "transports": {
+              "type": "object",
+              "properties": {
+                "kernel": {
+                  "type": "boolean"
+                },
+                "syslog": {
+                  "type": "boolean"
+                },
+                "stdout": {
+                  "type": "boolean"
+                },
+                "journal": {
+                  "type": "boolean"
+                },
+                "audit": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "rate_limiting": {
+              "type": "object",
+              "properties": {
+                "max_logs_per_minute": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "burst_allowance": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "deduplication": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "window_seconds": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

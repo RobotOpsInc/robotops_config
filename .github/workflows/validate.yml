@@ -1,0 +1,33 @@
+name: Validate Config
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli
+
+      - name: Validate default.yaml
+        run: ajv validate -s schema/config.schema.json -d config/default.yaml
+
+      - name: Validate minimal.yaml
+        run: ajv validate -s schema/config.schema.json -d config/minimal.yaml
+
+      - name: Validate examples
+        run: |
+          for f in config/examples/*.yaml; do
+            echo "Validating $f"
+            ajv validate -s schema/config.schema.json -d "$f"
+          done
+
+      - name: YAML lint
+        run: |
+          pip install yamllint
+          yamllint config/
