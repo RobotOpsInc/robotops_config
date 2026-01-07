@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.3.2] - 2026-01-07
+
+### Changed
+
+- Fixed CD permissions issue
+
 ## [0.3.1] - 2026-01-07
 
 ### Changed
