@@ -4,7 +4,7 @@
 # Prioritizes tracing for navigation-critical topics while reducing
 # overhead for high-frequency sensor data.
 
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 
 tracing:
   enabled: true
@@ -12,7 +12,7 @@ tracing:
 
   # Optimized sampling for Nav2 topics
   trace_rate:
-    default: 1.0
+    default_rate: 1.0
 
     overrides:
       # Sensor inputs: reduced sampling

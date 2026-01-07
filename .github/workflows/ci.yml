@@ -1,0 +1,247 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  proto-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Buf lint
+        run: buf lint
+
+      - name: Buf breaking (check against base branch)
+        if: github.event_name == 'pull_request'
+        run: |
+          # Check against the PR's base branch (e.g., main or development)
+          BASE_BRANCH="${{ github.base_ref }}"
+          echo "Checking for breaking changes against branch: $BASE_BRANCH"
+
+          # Try to check against base branch
+          set +e
+          OUTPUT=$(buf breaking --against "https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH" 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          if echo "$OUTPUT" | grep -q "had no .proto files"; then
+            echo "ℹ️  Base branch $BASE_BRANCH has no proto files yet - skipping breaking change check"
+            echo "This is expected for the first PR adding proto files to this branch"
+            exit 0
+          elif [ $EXIT_CODE -ne 0 ]; then
+            echo "$OUTPUT"
+            exit $EXIT_CODE
+          else
+            echo "✅ No breaking changes detected against $BASE_BRANCH"
+          fi
+
+  proto-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Generate code
+        run: just generate
+
+  test-rust-package:
+    runs-on: ubuntu-latest
+    needs: proto-generate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Generate code
+        run: just generate
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check Rust package
+        run: |
+          cd generated/sdks/rust
+          cargo check --all-targets
+          cargo clippy -- -D warnings
+
+  test-cpp-package:
+    runs-on: ubuntu-latest
+    needs: proto-generate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Generate code
+        run: just generate
+
+      - name: Validate C++ headers compile
+        run: |
+          cd generated/sdks/cpp
+          # Basic compilation test for generated headers
+          g++ -c -std=c++17 -I. robotops/config/v1/config.pb.cc -o /tmp/config.pb.o
+          echo "C++ package validated successfully"
+
+  validate:
+    runs-on: ubuntu-latest
+    needs: proto-generate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Generate code
+        run: just generate
+
+      - name: Run validation
+        run: just validate
+
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need history for diff
+
+      - name: Install just
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+      - name: Validate schema_versions match VERSION file
+        run: just validate-versions
+
+      - name: Check if version bump required
+        if: github.event_name == 'pull_request'
+        run: |
+          # Files that require a version bump when changed
+          VERSIONED_PATTERNS="proto/*.proto .yamllint"
+
+          # Get changed files in this PR
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Check if any versioned file changed
+          VERSIONED_CHANGED=false
+          for file in $CHANGED_FILES; do
+            case "$file" in
+              proto/*.proto|.yamllint)
+                VERSIONED_CHANGED=true
+                echo "Versioned file changed: $file"
+                ;;
+            esac
+          done
+
+          if [ "$VERSIONED_CHANGED" = "true" ]; then
+            echo ""
+            echo "Versioned files changed - checking if VERSION was bumped..."
+
+            if echo "$CHANGED_FILES" | grep -q "^VERSION$"; then
+              echo "VERSION file was updated. Checking if it was actually bumped..."
+
+              OLD_VERSION=$(git show origin/${{ github.base_ref }}:VERSION 2>/dev/null || echo "0.0.0")
+              NEW_VERSION=$(cat VERSION)
+
+              if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+                echo "::error::VERSION file changed but version was not bumped (still $NEW_VERSION)"
+                exit 1
+              else
+                echo "Version bumped: $OLD_VERSION -> $NEW_VERSION"
+              fi
+            else
+              echo "::error::Versioned files changed but VERSION file was not updated. Run 'just bump-version patch|minor|major'"
+              exit 1
+            fi
+          else
+            echo "No versioned files changed - version bump not required"
+          fi
+
+      - name: Check CHANGELOG has entry for version
+        if: github.event_name == 'pull_request'
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          # Only check if VERSION was changed
+          if echo "$CHANGED_FILES" | grep -q "^VERSION$"; then
+            VERSION=$(cat VERSION)
+            echo "Checking CHANGELOG.md for version $VERSION entry..."
+
+            # Look for a header like "## [0.1.2]" or "## [0.1.2] - 2026-01-07"
+            if grep -qE "^## \[$VERSION\]" CHANGELOG.md; then
+              echo "CHANGELOG.md has entry for version $VERSION"
+            else
+              echo "::error::VERSION was bumped to $VERSION but CHANGELOG.md is missing an entry."
+              echo "::error::Add a section: ## [$VERSION] - $(date +%Y-%m-%d)"
+              exit 1
+            fi
+          else
+            echo "VERSION not changed - skipping CHANGELOG check"
+          fi
