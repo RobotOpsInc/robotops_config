@@ -82,7 +82,14 @@ jobs:
           cat release_notes.md >> $GITHUB_STEP_SUMMARY
 
   publish-packages:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     needs: release
     if: ${{ !inputs.dry_run }}
     permissions:
@@ -170,19 +177,20 @@ jobs:
           conan remote add robotops-robotops-config-cpp https://conan.cloudsmith.io/robotops/robotops-config-cpp/ || true
           conan remote login -p "${CLOUDSMITH_API_KEY}" robotops-robotops-config-cpp "${CONAN_USER}"
 
-          # Create and upload package
-          conan create . --version=${{ steps.version.outputs.version }}
+          # Create and upload package (arch-specific build)
+          conan create . --version=${{ steps.version.outputs.version }} -s arch=${{ matrix.arch }}
           conan upload "robotops-config/${{ steps.version.outputs.version }}" --confirm -r robotops-robotops-config-cpp
 
       - name: Summary
         run: |
-          echo "## Package Publishing" >> $GITHUB_STEP_SUMMARY
+          echo "## Package Publishing (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "Architecture: ${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Published Packages" >> $GITHUB_STEP_SUMMARY
           echo "✅ Rust crate: https://cloudsmith.io/~robotopsinc/repos/robotops-config-rust/packages/" >> $GITHUB_STEP_SUMMARY
-          echo "✅ C++ package: https://cloudsmith.io/~robotopsinc/repos/robotops-config-cpp/packages/" >> $GITHUB_STEP_SUMMARY
+          echo "✅ C++ package (${{ matrix.arch }}): https://cloudsmith.io/~robotopsinc/repos/robotops-config-cpp/packages/" >> $GITHUB_STEP_SUMMARY
           echo "✅ YAML config: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
