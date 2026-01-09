@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.3.9] - 2026-01-09
+
+### Changed
+
+- Matrix build creates armv8 and x86_64 Conan builds
+- Platform independent build for Cargo
+
 ## [0.3.8] - 2026-01-09
 
 ### Changed
