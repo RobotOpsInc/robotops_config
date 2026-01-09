@@ -4,7 +4,7 @@
 # Prioritizes tracing for navigation-critical topics while reducing
 # overhead for high-frequency sensor data.
 
-schema_version: "0.3.5"
+schema_version: "0.3.6"
 
 tracing:
   enabled: true
