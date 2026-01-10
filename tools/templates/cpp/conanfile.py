@@ -11,8 +11,8 @@ class RobotOpsConfigConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     exports_sources = "*.h", "*.hpp", "*.cc"
 
-    def requirements(self):
-        self.requires("protobuf/3.21.12")
+    def build_requirements(self):
+        self.build_requires("protobuf/3.21.12")
 
     def package(self):
         copy(self, "*.h", src=self.source_folder, dst=f"{self.package_folder}/include")
