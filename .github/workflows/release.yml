@@ -181,7 +181,7 @@ jobs:
           conan remote login -p "${CLOUDSMITH_API_KEY}" robotops-robotops-config-cpp "${CONAN_USER}"
 
           # Create and upload package (arch-specific build)
-          conan create . --version=${{ steps.version.outputs.version }} -s arch=${{ matrix.conan_arch }}
+          conan create . --version=${{ steps.version.outputs.version }} -s arch=${{ matrix.conan_arch }} --build=missing
           conan upload "robotops-config/${{ steps.version.outputs.version }}" --confirm -r robotops-robotops-config-cpp
 
       - name: Summary
