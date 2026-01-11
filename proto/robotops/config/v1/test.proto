@@ -1,0 +1,3 @@
+syntax = "proto3";
+package robotops.config.v1;
+message Test {}
