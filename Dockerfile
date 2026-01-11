@@ -11,13 +11,15 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     git \
     curl \
-    python3-bloom \
     dpkg-dev \
     fakeroot \
     debhelper \
     protobuf-compiler \
     libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install bloom via pip (not available in Ubuntu 24.04 repos)
+RUN pip3 install --break-system-packages bloom
 
 # Create workspace structure
 RUN mkdir -p /ws/src
