@@ -129,6 +129,7 @@ jobs:
       - name: Build Debian package
         run: |
           docker run --rm \
+            -v ${{ github.workspace }}:/ws/src/robotops-config \
             -v ${{ github.workspace }}:/output \
             robotops-config:build bash -c "
               cd /ws/src/robotops-config && \

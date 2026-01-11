@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.5] - 2026-01-11
+
+### Fixed
+
+- **GitHub Actions Release Workflow**: Fixed Debian package build failure in release workflows
+  - Added proper Docker volume mount to make generated protobuf code accessible during package build
+  - Container now mounts workspace to both `/ws/src/robotops-config` (source) and `/output` (artifacts)
+  - Resolves "No packages found in path" error from bloom-generate
+  - Applied fix to both production (release.yml) and development (release-dev.yml) workflows
+
 ## [0.4.4] - 2026-01-11
 
 ### Fixed
