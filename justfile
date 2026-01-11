@@ -59,6 +59,11 @@ bump-version LEVEL:
         sed -i '' "s/@default \"$CURRENT\"/@default \"$NEW_VERSION\"/g" proto/robotops/config/v1/config.proto
     fi
 
+    # Update test.cpp version string
+    if [ -f "test/cmake_integration/test.cpp" ]; then
+        sed -i '' "s/set_schema_version(\"$CURRENT\")/set_schema_version(\"$NEW_VERSION\")/g" test/cmake_integration/test.cpp
+    fi
+
     # Regenerate code to update generated/yaml/default.yaml
     if command -v just &> /dev/null; then
         echo "Regenerating code..."
@@ -90,6 +95,7 @@ bump-version LEVEL:
     echo "✅ Updated:"
     echo "  - VERSION"
     echo "  - proto/robotops/config/v1/config.proto (@default annotation)"
+    echo "  - test/cmake_integration/test.cpp (version string)"
     echo "  - generated/yaml/default.yaml (regenerated)"
     echo "  - CHANGELOG.md (added section for $NEW_VERSION)"
     echo ""
@@ -160,6 +166,17 @@ validate-versions:
             EXIT_CODE=1
         else
             echo "OK: generated/yaml/default.yaml"
+        fi
+    fi
+
+    # Check test.cpp version string
+    if [ -f "test/cmake_integration/test.cpp" ]; then
+        TEST_VERSION=$(grep 'set_schema_version' test/cmake_integration/test.cpp | sed 's/.*set_schema_version("\([^"]*\)").*/\1/')
+        if [ "$TEST_VERSION" != "$EXPECTED" ]; then
+            echo "MISMATCH: test/cmake_integration/test.cpp has version \"$TEST_VERSION\""
+            EXIT_CODE=1
+        else
+            echo "OK: test/cmake_integration/test.cpp"
         fi
     fi
 
