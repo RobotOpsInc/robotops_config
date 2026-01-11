@@ -11,11 +11,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install just
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+          sudo mv just /usr/local/bin/
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: robotops-config:build
 
       - name: Buf lint
-        run: buf lint
+        run: docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf lint"
 
       - name: Buf breaking (check against base branch)
         if: github.event_name == 'pull_request'
@@ -24,9 +38,9 @@ jobs:
           BASE_BRANCH="${{ github.base_ref }}"
           echo "Checking for breaking changes against branch: $BASE_BRANCH"
 
-          # Try to check against base branch
+          # Try to check against base branch using Docker
           set +e
-          OUTPUT=$(buf breaking --against "https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH" 2>&1)
+          OUTPUT=$(docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf breaking --against \"https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH\"" 2>&1)
           EXIT_CODE=$?
           set -e
 
@@ -46,21 +60,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+          sudo mv just /usr/local/bin/
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: robotops-config:build
 
       - name: Generate code
         run: just generate
@@ -70,25 +85,6 @@ jobs:
     needs: proto-generate
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install just
-        uses: extractions/setup-just@v2
-
-      - name: Generate code
-        run: just generate
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -105,24 +101,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
+      - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y protobuf-compiler libprotobuf-dev
-
-      - name: Install just
-        uses: extractions/setup-just@v2
-
-      - name: Generate code
-        run: just generate
+          sudo apt-get install -y libprotobuf-dev
 
       - name: Validate C++ headers compile
         run: |
@@ -137,27 +119,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Install just
-        uses: extractions/setup-just@v2
-
-      - name: Generate code
-        run: just generate
 
       - name: Run validation
         run: just validate
