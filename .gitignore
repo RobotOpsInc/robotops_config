@@ -1,3 +1,8 @@
 # All generated code (built during CI/CD)
 # YAML config is published as release asset with predictable URL
 generated/
+
+# Generated ROS2 package files (created by codegen from templates)
+package.xml
+CMakeLists.txt
+cmake/
