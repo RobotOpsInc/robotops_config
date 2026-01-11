@@ -1,8 +1,8 @@
-name: Release
+name: Release Development
 
 on:
   workflow_dispatch:
-    # Manual trigger only - production releases from main branch only
+    # Manual trigger only - development releases from development branch only
     inputs:
       dry_run:
         description: 'Dry run (validate without creating release)'
@@ -10,29 +10,29 @@ on:
         default: false
 
 jobs:
-  release:
+  release-dev:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Needed to create releases and tags
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure release is from main branch
+      - name: Ensure release is from development branch
         run: |
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            echo "::error::Production releases can only be created from main branch"
+          if [[ "${{ github.ref }}" != "refs/heads/development" ]]; then
+            echo "::error::Development releases can only be created from development branch"
             echo "Current branch: ${{ github.ref }}"
-            echo "For development releases, use the Release Development workflow"
             exit 1
           fi
-          echo "📦 Production release from main branch"
+          echo "🧪 Development pre-release from development branch"
 
       - name: Get version from VERSION file
         id: version
         run: |
           VERSION=$(cat VERSION)
+          DEV_TAG="v${VERSION}-development-$(git rev-parse --short HEAD)"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$DEV_TAG" >> $GITHUB_OUTPUT
 
       - name: Check tag doesn't already exist
         run: |
@@ -61,30 +61,31 @@ jobs:
           echo "Extracted changelog:"
           cat release_notes.md
 
-      - name: Create GitHub Release
+      - name: Create GitHub Pre-Release
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
-            --title "Release ${{ steps.version.outputs.tag }}" \
-            --notes-file release_notes.md
+            --title "Pre-Release ${{ steps.version.outputs.tag }}" \
+            --notes-file release_notes.md \
+            --prerelease
 
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
         run: |
           echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Would create release:" >> $GITHUB_STEP_SUMMARY
+          echo "Would create pre-release:" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Title:** Release ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Title:** Pre-Release ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Release Notes" >> $GITHUB_STEP_SUMMARY
           cat release_notes.md >> $GITHUB_STEP_SUMMARY
 
-  publish-packages:
+  publish-dev-packages:
     runs-on: ubuntu-24.04
-    needs: release
+    needs: release-dev
     if: ${{ !inputs.dry_run }}
     permissions:
       contents: write  # Needed to upload release assets
@@ -95,14 +96,15 @@ jobs:
         id: version
         run: |
           VERSION=$(cat VERSION)
+          DEV_TAG="v${VERSION}-development-$(git rev-parse --short HEAD)"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$DEV_TAG" >> $GITHUB_OUTPUT
 
       - name: Determine Cloudsmith repository
         id: repo
         run: |
-          echo "repo=robotops" >> $GITHUB_OUTPUT
-          echo "Deploying to: production (robotops)"
+          echo "repo=robotops-development" >> $GITHUB_OUTPUT
+          echo "Deploying to: development (robotops-development)"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -169,7 +171,7 @@ jobs:
           mkdir -p ~/.cargo
           cat >> ~/.cargo/config.toml <<EOF
           [registries.cloudsmith]
-          index = "sparse+https://cargo.cloudsmith.io/robotops/robotops-config-rust/"
+          index = "sparse+https://cargo.cloudsmith.io/robotops/robotops-config-rust-dev/"
           token = "Token ${CLOUDSMITH_API_KEY}"
           credential-provider = "cargo:token"
           EOF
@@ -186,19 +188,19 @@ jobs:
             generated/yaml/default.yaml#config.yaml \
             --clobber
 
-          echo "✅ Uploaded config.yaml to release ${{ steps.version.outputs.tag }}"
+          echo "✅ Uploaded config.yaml to pre-release ${{ steps.version.outputs.tag }}"
           echo ""
           echo "Public download URL:"
           echo "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml"
 
       - name: Summary
         run: |
-          echo "## Package Publishing" >> $GITHUB_STEP_SUMMARY
+          echo "## Package Publishing (Development)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "Package: ${{ steps.deb.outputs.file }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Published Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Rust crate: https://cloudsmith.io/~robotops/repos/robotops-config-rust/packages/" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Rust crate (dev): https://cloudsmith.io/~robotops/repos/robotops-config-rust-dev/packages/" >> $GITHUB_STEP_SUMMARY
           echo "✅ Debian package: https://cloudsmith.io/~robotopsinc/repos/${{ steps.repo.outputs.repo }}/packages/" >> $GITHUB_STEP_SUMMARY
           echo "✅ YAML config: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml" >> $GITHUB_STEP_SUMMARY
