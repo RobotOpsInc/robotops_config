@@ -16,7 +16,7 @@ jobs:
           curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
           sudo mv just /usr/local/bin/
 
-      - name: Buf lint
+      - name: Buf lint and breaking checks
         run: just lint
 
       - name: Buf breaking (check against base branch)
@@ -26,15 +26,19 @@ jobs:
           BASE_BRANCH="${{ github.base_ref }}"
           echo "Checking for breaking changes against branch: $BASE_BRANCH"
 
-          # Try to check against base branch using Docker
+          # Try to check against base branch using Docker (lint step already built the image)
           set +e
-          OUTPUT=$(docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf breaking proto --against \"https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH\"" 2>&1)
+          OUTPUT=$(docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf breaking proto --against \"https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH\" 2>&1")
           EXIT_CODE=$?
           set -e
 
           if echo "$OUTPUT" | grep -q "had no .proto files"; then
             echo "ℹ️  Base branch $BASE_BRANCH has no proto files yet - skipping breaking change check"
             echo "This is expected for the first PR adding proto files to this branch"
+            exit 0
+          elif echo "$OUTPUT" | grep -q "has an invalid"; then
+            echo "⚠️  Base branch has incompatible buf.yaml version - skipping breaking change check"
+            echo "This is expected when base branch uses different buf version"
             exit 0
           elif [ $EXIT_CODE -ne 0 ]; then
             echo "$OUTPUT"
