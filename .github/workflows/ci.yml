@@ -13,8 +13,8 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-          sudo mv just /usr/local/bin/
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Buf lint and breaking checks
         run: just lint
@@ -54,8 +54,8 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-          sudo mv just /usr/local/bin/
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
@@ -67,8 +67,8 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-          sudo mv just /usr/local/bin/
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
@@ -88,8 +88,8 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-          sudo mv just /usr/local/bin/
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
@@ -113,8 +113,8 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-          sudo mv just /usr/local/bin/
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
