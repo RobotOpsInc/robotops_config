@@ -78,9 +78,8 @@ jobs:
 
       - name: Check Rust package
         run: |
-          cd generated/sdks/rust
-          cargo check --all-targets
-          cargo clippy -- -D warnings
+          cargo check --manifest-path generated/sdks/rust/Cargo.toml --all-targets
+          cargo clippy --manifest-path generated/sdks/rust/Cargo.toml -- -D warnings
 
   test-cpp-package:
     runs-on: ubuntu-latest

@@ -16,7 +16,7 @@ from google.protobuf.json_format import ParseDict, ParseError
 sys.path.insert(0, str(Path(__file__).parent.parent / "generated" / "sdks" / "python"))
 
 try:
-    from robotops.config.v1 import config_pb2
+    from proto.robotops.config.v1 import config_pb2
 except ImportError:
     print("Error: Could not import generated protobuf types.")
     print("Run 'just generate' first to generate Python protobuf code.")
