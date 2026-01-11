@@ -50,6 +50,12 @@ install(
   DESTINATION include
 )
 
+# Install defaults.hpp helper
+install(
+  FILES generated/sdks/cpp/defaults.hpp
+  DESTINATION include/robotops/config/v1
+)
+
 # Export CMake targets so downstream packages can use find_package(robotops-config)
 install(
   EXPORT ${PROJECT_NAME}Targets

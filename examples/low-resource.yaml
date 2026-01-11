@@ -4,7 +4,7 @@
 # Reduces buffer sizes, sampling rates, and collection frequency to
 # minimize overhead while maintaining essential observability.
 
-schema_version: "0.4.13"
+schema_version: "0.4.14"
 
 tracing:
   enabled: true
