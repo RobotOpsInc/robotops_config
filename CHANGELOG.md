@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.13] - 2026-01-11
+
+### Fixed
+
+- **Integration Test**: Fixed test.cpp to use correct protobuf field names
+  - Changed from `set_version()`/`version()` to `set_schema_version()`/`schema_version()`
+  - Matches actual Config message schema definition
+- **CI Validation**: Added libprotobuf-dev installation before running integration tests
+  - Required for compiling test executables that include protobuf headers
+  - Prevents "No such file or directory" errors for protobuf includes
+
 ## [0.4.12] - 2026-01-11
 
 ### Fixed
