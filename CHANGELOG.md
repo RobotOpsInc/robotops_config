@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.14] - 2026-01-11
+
+### Fixed
+
+- **CMake Installation**: Added installation of defaults.hpp header file
+  - defaults.hpp contains helper functions like CreateDefaultConfig()
+  - Now properly installed to /opt/ros/jazzy/include/robotops/config/v1/
+  - Integration test updated to verify defaults.hpp accessibility
+
+- **Code Generator**: Fixed C++ defaults generation for repeated fields
+  - Skip generating setters for repeated and map fields (not supported in C++)
+  - Fixed string escaping to handle quotes in default values
+  - Prevents invalid C++ code generation
+
 ## [0.4.13] - 2026-01-11
 
 ### Fixed
