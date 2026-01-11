@@ -1,5 +1,12 @@
 # Version management and code generation for robotops_config
 
+# Lint proto files for style and correctness
+lint:
+    @echo "Linting proto files..."
+    docker build -t robotops-config:build .
+    docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf lint proto"
+    @echo "✅ Proto linting passed"
+
 # Generate all code from proto schema (Rust, C++, YAML)
 generate:
     @echo "Generating code from proto schema..."

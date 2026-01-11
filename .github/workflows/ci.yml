@@ -11,25 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Install just
         run: |
           curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
           sudo mv just /usr/local/bin/
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          load: true
-          tags: robotops-config:build
-
       - name: Buf lint
-        run: docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf lint"
+        run: just lint
 
       - name: Buf breaking (check against base branch)
         if: github.event_name == 'pull_request'
@@ -40,7 +28,7 @@ jobs:
 
           # Try to check against base branch using Docker
           set +e
-          OUTPUT=$(docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf breaking --against \"https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH\"" 2>&1)
+          OUTPUT=$(docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf breaking proto --against \"https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH\"" 2>&1)
           EXIT_CODE=$?
           set -e
 
@@ -60,22 +48,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Install just
         run: |
           curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
           sudo mv just /usr/local/bin/
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          load: true
-          tags: robotops-config:build
 
       - name: Generate code
         run: just generate
@@ -119,8 +95,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Install just
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz
+          sudo mv just /usr/local/bin/
 
       - name: Run validation
         run: just validate
