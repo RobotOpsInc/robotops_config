@@ -17,13 +17,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure release is from main branch
+      - name: Ensure release is from main or development branch
         run: |
-          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            echo "::error::Production releases can only be created from the main branch"
+          if [[ "${{ github.ref }}" != "refs/heads/main" && "${{ github.ref }}" != "refs/heads/development" ]]; then
+            echo "::error::Releases can only be created from main or development branches"
             echo "Current branch: ${{ github.ref }}"
-            echo "Use the 'Development Release' workflow for pre-releases from other branches"
             exit 1
+          fi
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "📦 Production release from main branch"
+          else
+            echo "🧪 Development release from development branch"
           fi
 
       - name: Get version from VERSION file
@@ -110,6 +115,11 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
 
       - name: Build Docker image
         uses: docker/build-push-action@v5
