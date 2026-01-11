@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.0] - 2026-01-10
+
+### Added
+
+- **ROS2 Debian Package Support**: robotops-config now distributes as a ROS2 system package
+  - Created `package.xml` for ROS2 package metadata (format 3)
+  - Created `CMakeLists.txt` for ament_cmake build system integration
+  - Compiles protobuf library from `config.pb.cc` into installable shared library
+  - Exports CMake targets (`robotops-config::robotops-config`) for downstream consumer use
+  - Properly installs headers to `/include/robotops` for C++ consumers
+  - Enables standard ROS2 workflow: `rosdep install` + `colcon build`
+
+### Changed
+
+- **Build System Migration**: Eliminated Conan dependency for C++ package distribution
+  - Removed Conan-specific build files and publishing logic from CI/CD
+  - Protobuf now sourced from Ubuntu package repositories (no SSL certificate issues)
+  - Release workflow now builds and publishes Debian source packages via Cloudsmith
+  - Customers no longer need to install Conan or conancenter
+- **Code Generation Pipeline**: ROS2 files now template-based
+  - Added `tools/templates/ros2/` directory with package.xml and CMakeLists.txt templates
+  - Version automatically substituted from VERSION file during code generation
+  - Generated files properly gitignored (not committed to repository)
+  - Integrates with existing `just generate` and `just bump-version` workflows
+- **Release Workflow**: Updated for Debian distribution
+  - Changed from multi-architecture Conan builds to single source Debian package
+  - Uses bloom to generate package metadata
+  - Uses dpkg-buildpackage for building
+  - Publishes to Cloudsmith as "deb" format (architecture-independent source package)
+
+### Removed
+
+- **Conan Integration**: Removed all Conan-related code
+  - Deleted `tools/templates/cpp/conanfile.py` template
+  - Removed `ConanfileGenerator` class from code generation pipeline
+  - Removed C++ Conan package publishing (now distributed as ROS2 Debian package)
+  - Removed multi-architecture Conan builds from release workflow
+
 ## [0.3.13] - 2026-01-10
 
 ### Changed
