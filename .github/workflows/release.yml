@@ -82,16 +82,7 @@ jobs:
           cat release_notes.md >> $GITHUB_STEP_SUMMARY
 
   publish-packages:
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            conan_arch: x86_64
-            runner: ubuntu-latest
-          - arch: arm64
-            conan_arch: armv8
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
     needs: release
     if: ${{ !inputs.dry_run }}
     permissions:
@@ -106,44 +97,68 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
+      - name: Determine Cloudsmith repository
+        id: repo
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "repo=robotops" >> $GITHUB_OUTPUT
+            echo "Deploying to: production (robotops)"
+          else
+            echo "repo=robotops-development" >> $GITHUB_OUTPUT
+            echo "Deploying to: development (robotops-development)"
+          fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
         with:
-          python-version: '3.11'
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: robotops-config:build
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Install protoc
+      - name: Build Debian package
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          docker run --rm \
+            -v ${{ github.workspace }}:/output \
+            robotops-config:build bash -c "
+              cd /ws/src/robotops-config && \
+              apt-get update && \
+              apt-get install -y dpkg-dev fakeroot debhelper && \
+              bloom-generate rosdebian --os-name ubuntu --os-version noble --ros-distro jazzy && \
+              dpkg-buildpackage -us -uc -b && \
+              cp /ws/src/*.deb /output/
+            "
 
-      - name: Install just
-        uses: extractions/setup-just@v2
-
-      - name: Generate code
-        run: just generate
-
-      - name: Upload YAML config as release asset
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Find built package
+        id: deb
         run: |
-          # Upload YAML file to GitHub release with user-friendly name
-          gh release upload "${{ steps.version.outputs.tag }}" \
-            generated/yaml/default.yaml#config.yaml \
-            --clobber
+          DEB_FILE=$(ls *.deb | head -n1)
+          echo "file=$DEB_FILE" >> $GITHUB_OUTPUT
+          echo "Built package: $DEB_FILE"
 
-          echo "✅ Uploaded config.yaml to release ${{ steps.version.outputs.tag }}"
-          echo ""
-          echo "Public download URL:"
-          echo "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml"
+      - name: Upload to Cloudsmith
+        uses: cloudsmith-io/action@v0.6.10
+        with:
+          api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          command: "push"
+          format: "deb"
+          owner: "robotops"
+          repo: ${{ steps.repo.outputs.repo }}
+          distro: "ubuntu"
+          release: "noble"
+          republish: "true"
+          file: ${{ steps.deb.outputs.file }}
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Publish Rust crate to Cloudsmith
-        if: ${{ matrix.arch == 'amd64' }}
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
         run: |
@@ -161,56 +176,28 @@ jobs:
           # Publish to Cloudsmith
           cargo publish --registry cloudsmith --allow-dirty
 
-      - name: Install Conan
-        run: |
-          pip3 install conan
-
-      - name: Set up Conan profile
-        run: |
-          conan profile detect --force
-
-      - name: Publish C++ package to Cloudsmith
+      - name: Upload YAML config as release asset
         env:
-          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
-          CONAN_USER: github-actions-bk1d
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cd generated/sdks/cpp
+          # Upload YAML file to GitHub release with user-friendly name
+          gh release upload "${{ steps.version.outputs.tag }}" \
+            generated/yaml/default.yaml#config.yaml \
+            --clobber
 
-          # Configure Cloudsmith remote
-          conan remote add robotops-robotops-config-cpp https://conan.cloudsmith.io/robotops/robotops-config-cpp/ || true
-          conan remote login -p "${CLOUDSMITH_API_KEY}" robotops-robotops-config-cpp "${CONAN_USER}"
-
-          # Create and upload package (arch-specific build)
-          conan create . --version=${{ steps.version.outputs.version }} -s arch=${{ matrix.conan_arch }} --build=missing
-          conan upload "robotops-config/${{ steps.version.outputs.version }}" --confirm -r robotops-robotops-config-cpp
+          echo "✅ Uploaded config.yaml to release ${{ steps.version.outputs.tag }}"
+          echo ""
+          echo "Public download URL:"
+          echo "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml"
 
       - name: Summary
         run: |
-          echo "## Package Publishing (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo "## Package Publishing" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "Architecture: ${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
+          echo "Package: ${{ steps.deb.outputs.file }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Published Packages" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Rust crate: https://cloudsmith.io/~robotopsinc/repos/robotops-config-rust/packages/" >> $GITHUB_STEP_SUMMARY
-          echo "✅ C++ package (${{ matrix.arch }}): https://cloudsmith.io/~robotopsinc/repos/robotops-config-cpp/packages/" >> $GITHUB_STEP_SUMMARY
+          echo "### Published Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Rust crate: https://cloudsmith.io/~robotops/repos/robotops-config-rust/packages/" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Debian package: https://cloudsmith.io/~robotopsinc/repos/${{ steps.repo.outputs.repo }}/packages/" >> $GITHUB_STEP_SUMMARY
           echo "✅ YAML config: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Usage" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Rust:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`toml" >> $GITHUB_STEP_SUMMARY
-          echo "[dependencies]" >> $GITHUB_STEP_SUMMARY
-          echo "robotops-config = { version = \"${{ steps.version.outputs.version }}\", registry = \"cloudsmith\" }" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**C++:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "conan install --requires=robotops-config/${{ steps.version.outputs.version }}@" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**YAML Config:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "# Download versioned configuration" >> $GITHUB_STEP_SUMMARY
-          echo "curl -L -o config.yaml https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/config.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

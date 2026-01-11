@@ -17,15 +17,31 @@ By maintaining configuration in a dedicated public repository, we ensure:
 
 ## Installation
 
-### Recommended: System-wide Installation
+### As a ROS2 System Package (Recommended)
 
-The default configuration is installed to `/etc/robotops/config.yaml` when you install the `ros-jazzy-rmw-robotops` Debian package:
+robotops-config is distributed as a source Debian package and installs as a ROS2 system package alongside robotops_msgs and rmw_robotops.
+
+**Using rosdep and colcon (standard ROS2 workflow):**
+
+```bash
+# Install system dependencies (including robotops-config)
+rosdep install --from-paths src --ignore-src -r
+
+# Build your workspace
+colcon build
+```
+
+The robotops-config package provides C++ headers and libraries for use by rmw_robotops and other packages. The configuration YAML is still downloaded separately.
+
+### Configuration File Installation
+
+The default configuration is installed to `/etc/robotops/config.yaml` when you install the rmw_robotops Debian package:
 
 ```bash
 sudo apt install ros-jazzy-rmw-robotops
 ```
 
-### Manual Installation
+### Manual Configuration Download
 
 Download the versioned configuration from GitHub releases:
 
@@ -35,7 +51,7 @@ sudo mkdir -p /etc/robotops
 
 # Download a specific version (recommended - use latest release version)
 curl -L -o /etc/robotops/config.yaml \
-  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/config.yaml
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.3.13/config.yaml
 
 # Or get the latest release
 LATEST_VERSION=$(curl -s https://api.github.com/repos/RobotOpsInc/robotops_config/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
@@ -51,7 +67,7 @@ In automated pipelines, download the config from releases:
 - name: Download RobotOps config
   run: |
     curl -L -o config.yaml \
-      https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0/config.yaml
+      https://github.com/RobotOpsInc/robotops_config/releases/download/v0.3.13/config.yaml
 ```
 
 The predictable URL format is:
@@ -260,15 +276,19 @@ assert_eq!(config.schema_version, "0.2.0");
 
 ```cmake
 # CMakeLists.txt
+find_package(ament_cmake REQUIRED)
 find_package(robotops-config REQUIRED)
+
+add_library(your_target ...)
 target_link_libraries(your_target robotops-config::robotops-config)
+ament_export_dependencies(robotops-config)
 ```
 
 ```cpp
 #include <robotops/config/v1/config.pb.h>
-#include <robotops/config/v1/defaults.hpp>
 
-auto config = robotops::config::v1::CreateDefaultConfig();
+robotops::config::v1::Config config;
+// Use config...
 ```
 
 ## Development
@@ -323,9 +343,10 @@ Production releases are created manually by maintainers via GitHub Actions from 
 The workflow will fail if triggered from any branch other than `main`.
 
 The release will:
-- Create a git tag matching the VERSION (e.g., `v0.2.0`)
+- Create a git tag matching the VERSION (e.g., `v0.4.0`)
 - Auto-populate release notes from CHANGELOG.md
-- Publish packages to production Cloudsmith registries
+- Publish Rust crate to Cloudsmith Cargo registry
+- Build and publish Debian source package to Cloudsmith
 - Upload YAML config as release asset
 
 ### Development Releases
@@ -333,44 +354,35 @@ The release will:
 Development releases can be manually triggered from the `development` branch for pre-production testing.
 
 **Key Differences:**
-- **Version**: `{VERSION}-development-{SHA}` (e.g., `0.2.0-development-abc1234`)
+- **Version**: Same as main (e.g., `0.3.13`)
 - **Trigger**: Manual via GitHub Actions (from `development` branch only)
-- **Registries**: Separate dev registries (`robotops-config-rust-dev`, `robotops-config-cpp-dev`)
-- **GitHub**: Marked as pre-release
+- **Repository**: Publishes to `robotops-development` Cloudsmith repository
+- **GitHub**: Released normally but from development branch
 - **Purpose**: Testing only - not for production
 
 **Creating a Dev Release:**
 
 1. Merge your feature to `development` and push to GitHub
-2. Go to **Actions** → **Development Release** → **Run workflow**
+2. Go to **Actions** → **Release** → **Run workflow**
 3. Select "development" from the branch dropdown
 4. Click **Run workflow**
 
-The workflow will fail if triggered from any branch other than `development`.
-
 **Using Dev Packages:**
 
-```toml
-# Rust: Add to ~/.cargo/config.toml
-[registries.cloudsmith-dev]
-index = "sparse+https://dl.cloudsmith.io/basic/robotopsinc/robotops-config-rust-dev/cargo/index.git"
+```bash
+# Add development Cloudsmith repository
+sudo curl -1sLf 'https://dl.cloudsmith.io/public/robotops/robotops-development/cfg/setup/bash.deb.sh' | sudo bash
+sudo apt install ros-jazzy-robotops-config
 
-# Then in Cargo.toml
-[dependencies]
-robotops-config = { version = "0.2.0-development-abc1234", registry = "cloudsmith-dev" }
+# Or build from source directly
+rosdep install --from-paths src --ignore-src -r
+colcon build
 ```
 
 ```bash
-# C++
-conan remote add cloudsmith-dev \
-  https://api.cloudsmith.io/conan/robotopsinc/robotops-config-cpp-dev/
-conan install --requires=robotops-config/0.2.0-development-abc1234@
-```
-
-```bash
-# YAML Config
+# YAML Config from development release
 curl -L -o config.yaml \
-  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.2.0-development-abc1234/config.yaml
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.3.13/config.yaml
 ```
 
 ## Maintenance

@@ -632,25 +632,43 @@ class CargoTomlGenerator:
         output_file.write_text(cargo_content)
 
 
-class ConanfileGenerator:
-    """Generate conanfile.py for C++ package from template"""
+class Ros2PackageGenerator:
+    """Generate package.xml and CMakeLists.txt for ROS2 package from templates"""
 
-    def generate(self, output_dir: Path, version: str) -> None:
-        """Generate conanfile.py from template"""
+    def generate(self, repo_root: Path, version: str) -> None:
+        """Generate package.xml and CMakeLists.txt from templates"""
         script_dir = Path(__file__).parent
-        template_file = script_dir.parent / "templates" / "cpp" / "conanfile.py"
 
-        if not template_file.exists():
-            print(f"Warning: Template {template_file} not found, skipping conanfile.py generation", file=sys.stderr)
-            return
+        # Generate package.xml at repository root
+        package_xml_template = script_dir.parent / "templates" / "ros2" / "package.xml"
+        if package_xml_template.exists():
+            template_content = package_xml_template.read_text()
+            package_content = template_content.replace("{{VERSION}}", version)
+            output_file = repo_root / "package.xml"
+            output_file.write_text(package_content)
+        else:
+            print(f"Warning: Template {package_xml_template} not found, skipping package.xml generation", file=sys.stderr)
 
-        # Read template and replace version placeholder
-        template_content = template_file.read_text()
-        conan_content = template_content.replace("{{VERSION}}", version)
+        # Generate CMakeLists.txt at repository root
+        cmake_template = script_dir.parent / "templates" / "ros2" / "CMakeLists.txt"
+        if cmake_template.exists():
+            template_content = cmake_template.read_text()
+            cmake_content = template_content  # No version placeholder needed
+            output_file = repo_root / "CMakeLists.txt"
+            output_file.write_text(cmake_content)
+        else:
+            print(f"Warning: Template {cmake_template} not found, skipping CMakeLists.txt generation", file=sys.stderr)
 
-        output_file = output_dir / "sdks" / "cpp" / "conanfile.py"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        output_file.write_text(conan_content)
+        # Generate cmake config template at cmake/ directory
+        cmake_config_template = script_dir.parent / "templates" / "ros2" / "robotops-configConfig.cmake.in"
+        if cmake_config_template.exists():
+            template_content = cmake_config_template.read_text()
+            cmake_dir = repo_root / "cmake"
+            cmake_dir.mkdir(parents=True, exist_ok=True)
+            output_file = cmake_dir / "robotops-configConfig.cmake.in"
+            output_file.write_text(template_content)
+        else:
+            print(f"Warning: Template {cmake_config_template} not found, skipping cmake config generation", file=sys.stderr)
 
 
 def main():
@@ -706,8 +724,8 @@ def main():
     cargo_gen = CargoTomlGenerator()
     cargo_gen.generate(output_dir, version)
 
-    conan_gen = ConanfileGenerator()
-    conan_gen.generate(output_dir, version)
+    ros2_gen = Ros2PackageGenerator()
+    ros2_gen.generate(repo_root, version)
 
     # Create Python package __init__.py files for protobuf imports
     python_dir = output_dir / "sdks" / "python"
@@ -721,7 +739,8 @@ def main():
     print(f"  - Rust: {output_dir}/sdks/rust/defaults.rs")
     print(f"  - Rust: {output_dir}/sdks/rust/Cargo.toml")
     print(f"  - C++: {output_dir}/sdks/cpp/defaults.hpp")
-    print(f"  - C++: {output_dir}/sdks/cpp/conanfile.py")
+    print(f"  - ROS2: {repo_root}/package.xml")
+    print(f"  - ROS2: {repo_root}/CMakeLists.txt")
     print(f"  - Python: {output_dir}/sdks/python/robotops/config/v1/config_pb2.py")
     print(f"  - YAML: {output_dir}/yaml/default.yaml")
 
