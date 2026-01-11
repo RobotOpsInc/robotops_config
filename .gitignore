@@ -7,3 +7,17 @@ debian/
 
 # Build artifacts from dpkg-buildpackage
 .obj-*/
+
+# Files copied from generated/ during package build
+/CMakeLists.txt
+/package.xml
+/cmake/
+
+# Built Debian packages
+*.deb
+*.ddeb
+*.buildinfo
+*.changes
+
+# Test build artifacts
+test/cmake_integration/build/

@@ -442,6 +442,10 @@ class CppGenerator:
         if not field.annotations.default:
             return None
 
+        # Skip repeated and map fields - C++ doesn't support setting defaults for these
+        if field.is_repeated or field.is_map:
+            return None
+
         default = field.annotations.default
 
         # Handle different types
@@ -453,14 +457,14 @@ class CppGenerator:
         elif field.proto_type in ["float", "double"]:
             return f"config.set_{field.name}({default})"
         elif field.proto_type == "string":
-            # Remove quotes if present and re-quote
+            # Remove outer quotes if present, escape inner quotes, and re-quote
             val = default.strip('"').strip("'")
+            # Escape any remaining quotes in the value
+            val = val.replace('\\', '\\\\').replace('"', '\\"')
             return f'config.set_{field.name}("{val}")'
-        elif not field.is_repeated and not field.is_map:
+        else:
             # Nested message
             return f"*config.mutable_{field.name}() = CreateDefault{field.proto_type}()"
-
-        return None
 
 
 class YamlGenerator:
