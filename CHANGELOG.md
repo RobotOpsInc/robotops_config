@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.3] - 2026-01-10
+
+### Changed
+
+- Docker builds 
+
 ## [0.4.2] - 2026-01-10
 
 ### Changed
