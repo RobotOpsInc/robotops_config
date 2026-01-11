@@ -1,0 +1,12 @@
+Source: ros-jazzy-robotops-config
+Section: misc
+Priority: optional
+Maintainer: RobotOps Team <support@robotops.dev>
+Build-Depends: debhelper (>= 9.0.0), libprotobuf32t64, ros-jazzy-ament-cmake
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-jazzy-robotops-config
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libprotobuf32t64
+Description: Generated Protobuf configuration types for RobotOps distributed tracing

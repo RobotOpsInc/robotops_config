@@ -1,38 +1,23 @@
-version: v2
-clean: true
-managed:
-  enabled: true
-  override:
-    # Don't modify go_package options (we're not generating Go)
-    - file_option: go_package_prefix
-      value: ""
+version: v1
 
 plugins:
   # Rust generation via prost
-  - remote: buf.build/community/neoeinstein-prost:v0.4.0
+  - plugin: buf.build/community/neoeinstein-prost:v0.4.0
     out: generated/sdks/rust
-    opt:
-      - compile_well_known_types
-      - file_descriptor_set
-  
-  # Add Rust serde bindings 
-  - remote: buf.build/community/neoeinstein-prost-serde:v0.3.1
+    opt: compile_well_known_types,file_descriptor_set
+
+  # Add Rust serde bindings
+  - plugin: buf.build/community/neoeinstein-prost-serde:v0.3.1
     out: generated/sdks/rust
 
-  # C++ generation via protobuf
-  - protoc_builtin: cpp
+  # C++ generation via protoc (built-in)
+  - name: cpp
     out: generated/sdks/cpp
-    opt:
-      - speed
+    opt: speed
 
-  # Python generation via protobuf (for validation tooling)
-  - protoc_builtin: python
+  # Python generation via protoc (built-in)
+  - name: python
     out: generated/sdks/python
-    opt:
-      - pyi_out=generated/sdks/python
 
-  # Custom defaults generator runs separately after buf generate
-  # See: python3 tools/robotops-codegen/main.py
-
-inputs:
-  - directory: proto
+# Custom defaults generator runs separately after buf generate
+# See: python3 tools/robotops-codegen/main.py

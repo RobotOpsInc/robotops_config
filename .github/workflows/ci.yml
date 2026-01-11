@@ -11,11 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
+      - name: Install just
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
-      - name: Buf lint
-        run: buf lint
+      - name: Buf lint and breaking checks
+        run: just lint
 
       - name: Buf breaking (check against base branch)
         if: github.event_name == 'pull_request'
@@ -24,15 +26,19 @@ jobs:
           BASE_BRANCH="${{ github.base_ref }}"
           echo "Checking for breaking changes against branch: $BASE_BRANCH"
 
-          # Try to check against base branch
+          # Try to check against base branch using Docker (lint step already built the image)
           set +e
-          OUTPUT=$(buf breaking --against "https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH" 2>&1)
+          OUTPUT=$(docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf breaking proto --against \"https://github.com/${{ github.repository }}.git#branch=$BASE_BRANCH\" 2>&1")
           EXIT_CODE=$?
           set -e
 
           if echo "$OUTPUT" | grep -q "had no .proto files"; then
             echo "ℹ️  Base branch $BASE_BRANCH has no proto files yet - skipping breaking change check"
             echo "This is expected for the first PR adding proto files to this branch"
+            exit 0
+          elif echo "$OUTPUT" | grep -q "has an invalid"; then
+            echo "⚠️  Base branch has incompatible buf.yaml version - skipping breaking change check"
+            echo "This is expected when base branch uses different buf version"
             exit 0
           elif [ $EXIT_CODE -ne 0 ]; then
             echo "$OUTPUT"
@@ -46,46 +52,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
       - name: Install just
-        uses: extractions/setup-just@v2
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
 
   test-rust-package:
     runs-on: ubuntu-latest
-    needs: proto-generate
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
       - name: Install just
-        uses: extractions/setup-just@v2
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
@@ -95,66 +78,43 @@ jobs:
 
       - name: Check Rust package
         run: |
-          cd generated/sdks/rust
-          cargo check --all-targets
-          cargo clippy -- -D warnings
+          cargo check --manifest-path generated/sdks/rust/Cargo.toml --all-targets
+          cargo clippy --manifest-path generated/sdks/rust/Cargo.toml -- -D warnings
 
   test-cpp-package:
     runs-on: ubuntu-latest
-    needs: proto-generate
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler libprotobuf-dev
-
       - name: Install just
-        uses: extractions/setup-just@v2
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libprotobuf-dev
 
       - name: Validate C++ headers compile
         run: |
           cd generated/sdks/cpp
           # Basic compilation test for generated headers
-          g++ -c -std=c++17 -I. robotops/config/v1/config.pb.cc -o /tmp/config.pb.o
+          g++ -c -std=c++17 -I. -I/usr/include proto/robotops/config/v1/config.pb.cc -o /tmp/config.pb.o
           echo "C++ package validated successfully"
 
   validate:
     runs-on: ubuntu-latest
-    needs: proto-generate
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Install just
-        uses: extractions/setup-just@v2
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
 
       - name: Generate code
         run: just generate

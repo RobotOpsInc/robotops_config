@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.4] - 2026-01-11
+
+### Fixed
+
+- **Protobuf Version Compatibility & CI/CD Consistency**: Generate protobuf code inside ros:jazzy Docker container to ensure protoc 3.21.12 compatibility and unified build environment
+  - Local development, CI/CD workflows, and Docker builds now use consistent protoc 3.21.12 (from ROS2 Jazzy)
+  - Resolves generated C++ code incompatibility with ROS2 Jazzy's protobuf version
+  - Updated `justfile` `generate` command to run buf inside Docker container
+  - Updated all GitHub Actions workflows (release.yml, release-dev.yml, ci.yml) to use just commands for full reproducibility locally:
+    - `just lint` for protocol buffer linting and validation
+    - `just generate` for code generation (all languages: Rust, C++, Python)
+    - `just validate` for comprehensive validation tasks
+    - All CI jobs use same justfile commands as local development, enabling single-command reproduction
+  - All CI jobs build and use the same Docker container for consistency
+  - Added buf v1.28.1 to Dockerfile with automatic architecture detection (x86_64/aarch64)
+  - Updated buf.yaml with lint and breaking change rules, configured for proto directory structure
+  - Updated buf.gen.yaml to v1 format (compatible with buf v1.28.1)
+  - Fixed Python code generation to properly create `__init__.py` files in both proto/ subdirectory and root paths
+  - Updated CI workflow to specify proto directory for buf lint and breaking checks
+
+### Changed
+
+- Dockerfile base image: Changed from ubuntu:24.04 to ros:jazzy to include ROS2 dependencies and correct protobuf version
+
 ## [0.4.3] - 2026-01-10
 
 ### Changed
