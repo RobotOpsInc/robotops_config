@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.12] - 2026-01-11
+
+### Fixed
+
+- **CMake Target Namespace**: Corrected exported target namespace from `robotops::` to `robotops-config::`
+  - Target is now correctly named `robotops-config::robotops-config` instead of `robotops::robotops-config`
+  - Fixes integration test failures and downstream package consumption
+  - Matches expected CMake package naming conventions
+
 ## [0.4.11] - 2026-01-11
 
 ### Fixed
