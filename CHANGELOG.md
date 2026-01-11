@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.8] - 2026-01-11
+
+### Fixed
+
+- **Release Workflows**: Fixed architecture-specific binary installation
+  - Install correct just binary for each architecture (x86_64 for amd64, aarch64 for arm64)
+  - Prevents "cannot execute binary file" errors on arm64 runners
+  - Run arch-independent steps (Rust publishing, YAML upload) only on amd64
+  - Applied to both release.yml and release-dev.yml workflows
+
 ## [0.4.7] - 2026-01-11
 
 ### Changed

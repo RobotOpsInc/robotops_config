@@ -116,7 +116,12 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            JUST_ARCH="aarch64"
+          else
+            JUST_ARCH="x86_64"
+          fi
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-${JUST_ARCH}-unknown-linux-musl.tar.gz | tar xz -C /tmp just
           sudo mv /tmp/just /usr/local/bin/
 
       - name: Build Docker image
@@ -171,9 +176,11 @@ jobs:
           file: ${{ steps.deb.outputs.file }}
 
       - name: Set up Rust
+        if: matrix.arch == 'amd64'
         uses: dtolnay/rust-toolchain@stable
 
       - name: Publish Rust crate to Cloudsmith
+        if: matrix.arch == 'amd64'
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
         run: |
@@ -192,6 +199,7 @@ jobs:
           cargo publish --registry cloudsmith --allow-dirty
 
       - name: Upload YAML config as release asset
+        if: matrix.arch == 'amd64'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
