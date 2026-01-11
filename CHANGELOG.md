@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.10] - 2026-01-11
+
+### Fixed
+
+- **CMake Integration**: Fixed protobuf target reference from `protobuf::libprotobuf` to `Protobuf::libprotobuf`
+  - Resolves "target not found" errors in downstream packages
+  - Matches standard CMake FindProtobuf module naming convention
+  - Enables proper linking of protobuf libraries in consuming packages
+
+### Added
+
+- **CI/CD Validation**: Added CMake integration tests to release workflow
+  - Validates package installation before publishing to Cloudsmith
+  - Tests CMake target existence and properties
+  - Verifies protobuf linkage and header accessibility
+  - Compiles and runs minimal test program using robotops-config
+  - Prevents broken packages from reaching production
+
 ## [0.4.9] - 2026-01-11
 
 ### Fixed

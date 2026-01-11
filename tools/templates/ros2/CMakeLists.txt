@@ -29,7 +29,7 @@ target_include_directories(${PROJECT_NAME}
 # Link protobuf libraries
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    protobuf::libprotobuf
+    Protobuf::libprotobuf
 )
 
 # Install library
