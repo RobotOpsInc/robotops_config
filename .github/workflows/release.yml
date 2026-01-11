@@ -167,6 +167,9 @@ jobs:
           echo "Installing package for validation..."
           sudo dpkg -i ${{ steps.deb.outputs.file }} || sudo apt-get install -f -y
 
+          echo "Installing build dependencies for integration test..."
+          sudo apt-get install -y libprotobuf-dev
+
           echo "Running CMake integration tests..."
           cd test/cmake_integration
           mkdir -p build && cd build
