@@ -7,14 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.11] - 2026-01-11
+
+### Fixed
+
+- **CMake Integration**: Fixed protobuf linking to use variable-based approach for compatibility
+  - Changed from `protobuf::libprotobuf` to `${Protobuf_LIBRARIES}` for broader CMake version support
+  - Added `${Protobuf_INCLUDE_DIRS}` to target include directories
+  - Resolves "target not found" errors in ROS2 Jazzy environment
+  - Compatible with both old and new FindProtobuf module versions
+
+### Added
+
+- **CI/CD Validation**: Added CMake integration tests to release workflow
+  - Validates package installation before publishing to Cloudsmith
+  - Tests CMake target existence and properties
+  - Verifies protobuf linkage and header accessibility
+  - Compiles and runs minimal test program using robotops-config
+  - Prevents broken packages from reaching production
+
 ## [0.4.10] - 2026-01-11
 
 ### Fixed
 
-- **CMake Integration**: Fixed protobuf target reference from `protobuf::libprotobuf` to `Protobuf::libprotobuf`
-  - Resolves "target not found" errors in downstream packages
-  - Matches standard CMake FindProtobuf module naming convention
-  - Enables proper linking of protobuf libraries in consuming packages
+- **CMake Integration**: Fixed protobuf linking to use variable-based approach for compatibility
+  - Changed from `protobuf::libprotobuf` to `${Protobuf_LIBRARIES}` for broader CMake version support
+  - Added `${Protobuf_INCLUDE_DIRS}` to target include directories
+  - Resolves "target not found" errors in ROS2 Jazzy environment
+  - Compatible with both old and new FindProtobuf module versions
 
 ### Added
 

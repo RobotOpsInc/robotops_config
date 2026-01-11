@@ -23,13 +23,16 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/generated/sdks/cpp>
+    $<BUILD_INTERFACE:${Protobuf_INCLUDE_DIRS}>
     $<INSTALL_INTERFACE:include>
 )
 
 # Link protobuf libraries
+# Use variable-based linking for compatibility with older FindProtobuf modules
+# that don't create the Protobuf::libprotobuf imported target
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    Protobuf::libprotobuf
+    ${Protobuf_LIBRARIES}
 )
 
 # Install library
