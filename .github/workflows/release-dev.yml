@@ -135,6 +135,9 @@ jobs:
             -v ${{ github.workspace }}:/output \
             robotops-config:build bash -c "
               cd /ws/src/robotops-config && \
+              cp generated/ros2/package.xml . && \
+              cp generated/ros2/CMakeLists.txt . && \
+              mkdir -p cmake && cp generated/ros2/robotops-configConfig.cmake.in cmake/ && \
               apt-get update && \
               apt-get install -y dpkg-dev fakeroot debhelper && \
               bloom-generate rosdebian --os-name ubuntu --os-version noble --ros-distro jazzy && \

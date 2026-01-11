@@ -635,37 +635,37 @@ class CargoTomlGenerator:
 class Ros2PackageGenerator:
     """Generate package.xml and CMakeLists.txt for ROS2 package from templates"""
 
-    def generate(self, repo_root: Path, version: str) -> None:
-        """Generate package.xml and CMakeLists.txt from templates"""
+    def generate(self, output_dir: Path, version: str) -> None:
+        """Generate package.xml and CMakeLists.txt from templates into generated/ros2/"""
         script_dir = Path(__file__).parent
+        ros2_output_dir = output_dir / "ros2"
+        ros2_output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Generate package.xml at repository root
+        # Generate package.xml
         package_xml_template = script_dir.parent / "templates" / "ros2" / "package.xml"
         if package_xml_template.exists():
             template_content = package_xml_template.read_text()
             package_content = template_content.replace("{{VERSION}}", version)
-            output_file = repo_root / "package.xml"
+            output_file = ros2_output_dir / "package.xml"
             output_file.write_text(package_content)
         else:
             print(f"Warning: Template {package_xml_template} not found, skipping package.xml generation", file=sys.stderr)
 
-        # Generate CMakeLists.txt at repository root
+        # Generate CMakeLists.txt
         cmake_template = script_dir.parent / "templates" / "ros2" / "CMakeLists.txt"
         if cmake_template.exists():
             template_content = cmake_template.read_text()
-            cmake_content = template_content  # No version placeholder needed
-            output_file = repo_root / "CMakeLists.txt"
+            cmake_content = template_content.replace("{{VERSION}}", version)
+            output_file = ros2_output_dir / "CMakeLists.txt"
             output_file.write_text(cmake_content)
         else:
             print(f"Warning: Template {cmake_template} not found, skipping CMakeLists.txt generation", file=sys.stderr)
 
-        # Generate cmake config template at cmake/ directory
+        # Generate cmake config template
         cmake_config_template = script_dir.parent / "templates" / "ros2" / "robotops-configConfig.cmake.in"
         if cmake_config_template.exists():
             template_content = cmake_config_template.read_text()
-            cmake_dir = repo_root / "cmake"
-            cmake_dir.mkdir(parents=True, exist_ok=True)
-            output_file = cmake_dir / "robotops-configConfig.cmake.in"
+            output_file = ros2_output_dir / "robotops-configConfig.cmake.in"
             output_file.write_text(template_content)
         else:
             print(f"Warning: Template {cmake_config_template} not found, skipping cmake config generation", file=sys.stderr)
@@ -725,7 +725,7 @@ def main():
     cargo_gen.generate(output_dir, version)
 
     ros2_gen = Ros2PackageGenerator()
-    ros2_gen.generate(repo_root, version)
+    ros2_gen.generate(output_dir, version)
 
     # Create Python package __init__.py files for protobuf imports
     python_dir = output_dir / "sdks" / "python"
@@ -748,8 +748,8 @@ def main():
     print(f"  - Rust: {output_dir}/sdks/rust/defaults.rs")
     print(f"  - Rust: {output_dir}/sdks/rust/Cargo.toml")
     print(f"  - C++: {output_dir}/sdks/cpp/defaults.hpp")
-    print(f"  - ROS2: {repo_root}/package.xml")
-    print(f"  - ROS2: {repo_root}/CMakeLists.txt")
+    print(f"  - ROS2: {output_dir}/ros2/package.xml")
+    print(f"  - ROS2: {output_dir}/ros2/CMakeLists.txt")
     print(f"  - Python: {output_dir}/sdks/python/robotops/config/v1/config_pb2.py")
     print(f"  - YAML: {output_dir}/yaml/default.yaml")
 
