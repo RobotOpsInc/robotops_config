@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.9] - 2026-01-11
+
+### Fixed
+
+- **CMake Config**: Fixed CMAKE_CURRENT_DIR to CMAKE_CURRENT_LIST_DIR in robotops-configConfig.cmake.in template
+  - Resolves "file not found" error when consuming robotops-config package
+  - CMAKE_CURRENT_DIR is not a valid CMake variable and expands to empty string
+  - CMAKE_CURRENT_LIST_DIR correctly points to the directory containing the config file
+
 ## [0.4.8] - 2026-01-11
 
 ### Fixed
