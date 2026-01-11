@@ -1,7 +1,5 @@
-version: v2
-modules:
-  - path: proto
-    name: buf.build/robotopsinc/robotops_config
+version: v1
+
 lint:
   use:
     - STANDARD

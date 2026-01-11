@@ -730,6 +730,15 @@ def main():
     # Create Python package __init__.py files for protobuf imports
     python_dir = output_dir / "sdks" / "python"
     if python_dir.exists():
+        # protoc generates files with the import path included, so they're in proto/robotops/...
+        proto_dir = python_dir / "proto"
+        if proto_dir.exists():
+            (proto_dir / "robotops" / "config" / "v1").mkdir(parents=True, exist_ok=True)
+            (proto_dir / "robotops" / "__init__.py").touch()
+            (proto_dir / "robotops" / "config" / "__init__.py").touch()
+            (proto_dir / "robotops" / "config" / "v1" / "__init__.py").touch()
+        # Also create at the root in case of different output structure
+        (python_dir / "robotops" / "config" / "v1").mkdir(parents=True, exist_ok=True)
         (python_dir / "robotops" / "__init__.py").touch()
         (python_dir / "robotops" / "config" / "__init__.py").touch()
         (python_dir / "robotops" / "config" / "v1" / "__init__.py").touch()
