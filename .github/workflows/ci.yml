@@ -106,6 +106,106 @@ jobs:
           g++ -c -std=c++17 -I. -I/usr/include proto/robotops/config/v1/config.pb.cc -o /tmp/config.pb.o
           echo "C++ package validated successfully"
 
+  test-ros2-package-integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          sudo mv /tmp/just /usr/local/bin/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: robotops-config:build
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate protobuf code
+        run: just generate
+
+      - name: Build Debian package
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/ws/src/robotops-config \
+            -v ${{ github.workspace }}:/output \
+            robotops-config:build bash -c "
+              cd /ws/src/robotops-config && \
+              cp generated/ros2/package.xml . && \
+              cp generated/ros2/CMakeLists.txt . && \
+              mkdir -p cmake && cp generated/ros2/robotops-configConfig.cmake.in cmake/ && \
+              apt-get update && \
+              apt-get install -y dpkg-dev fakeroot debhelper && \
+              bloom-generate rosdebian --os-name ubuntu --os-version noble --ros-distro jazzy && \
+              dpkg-buildpackage -us -uc -b && \
+              cp /ws/src/*.deb /output/
+            "
+
+      - name: Find built package
+        id: deb
+        run: |
+          DEB_FILE=$(ls *.deb | head -n1)
+          echo "file=$DEB_FILE" >> $GITHUB_OUTPUT
+          echo "Built package: $DEB_FILE"
+
+      - name: Validate package CMake integration
+        run: |
+          echo "Installing package for validation..."
+          sudo dpkg -i ${{ steps.deb.outputs.file }} || sudo apt-get install -f -y
+
+          echo "Installing build dependencies for integration test..."
+          sudo apt-get install -y libprotobuf-dev
+
+          echo "Running CMake integration tests..."
+          cd test/cmake_integration
+          mkdir -p build && cd build
+
+          # Configure with ROS2 prefix
+          cmake .. -DCMAKE_PREFIX_PATH=/opt/ros/jazzy
+
+          # Build the test
+          cmake --build .
+
+          # Run the test executable
+          ./test_robotops_config
+
+          echo "✅ All CMake integration tests passed"
+
+      - name: Check installed files
+        run: |
+          echo "Verifying installation..."
+
+          # Verify library exists
+          test -f /opt/ros/jazzy/lib/librobotops-config.so || \
+            { echo "❌ Library not found"; exit 1; }
+          echo "✓ Library found"
+
+          # Verify headers exist
+          test -f /opt/ros/jazzy/include/robotops/config/v1/config.pb.h || \
+            { echo "❌ Headers not found"; exit 1; }
+          echo "✓ Headers found"
+
+          # Verify CMake config exists (ament location)
+          test -f /opt/ros/jazzy/share/robotops-config/cmake/robotops-configConfig.cmake || \
+            { echo "❌ CMake config not found"; exit 1; }
+          echo "✓ CMake config found"
+
+          # Check library links to protobuf
+          ldd /opt/ros/jazzy/lib/librobotops-config.so | grep protobuf || \
+            { echo "❌ Protobuf not linked"; exit 1; }
+          echo "✓ Protobuf linked correctly"
+
+          echo "✅ All file checks passed"
+
   validate:
     runs-on: ubuntu-latest
     steps:
