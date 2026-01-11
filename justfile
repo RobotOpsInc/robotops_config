@@ -3,7 +3,8 @@
 # Generate all code from proto schema (Rust, C++, YAML)
 generate:
     @echo "Generating code from proto schema..."
-    buf generate
+    docker build -t robotops-config:build .
+    docker run --rm -v $(pwd):/ws/src/robotops-config -u $(id -u):$(id -g) -e XDG_CACHE_HOME=/tmp/.cache robotops-config:build bash -c "cd /ws/src/robotops-config && buf generate"
     python3 tools/robotops-codegen/main.py
     @echo ""
     @echo "✅ Code generation complete"
