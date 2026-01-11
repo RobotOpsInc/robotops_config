@@ -118,7 +118,12 @@ jobs:
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            JUST_ARCH="aarch64"
+          else
+            JUST_ARCH="x86_64"
+          fi
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-${JUST_ARCH}-unknown-linux-musl.tar.gz | tar xz -C /tmp just
           sudo mv /tmp/just /usr/local/bin/
 
       - name: Build Docker image
