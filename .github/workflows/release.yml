@@ -162,6 +162,52 @@ jobs:
           echo "file=$DEB_FILE" >> $GITHUB_OUTPUT
           echo "Built package: $DEB_FILE"
 
+      - name: Validate package CMake integration
+        run: |
+          echo "Installing package for validation..."
+          sudo dpkg -i ${{ steps.deb.outputs.file }} || sudo apt-get install -f -y
+
+          echo "Running CMake integration tests..."
+          cd test/cmake_integration
+          mkdir -p build && cd build
+
+          # Configure with ROS2 prefix
+          cmake .. -DCMAKE_PREFIX_PATH=/opt/ros/jazzy
+
+          # Build the test
+          cmake --build .
+
+          # Run the test executable
+          ./test_robotops_config
+
+          echo "✅ All CMake integration tests passed"
+
+      - name: Check installed files
+        run: |
+          echo "Verifying installation..."
+
+          # Verify library exists
+          test -f /opt/ros/jazzy/lib/librobotops-config.so || \
+            { echo "❌ Library not found"; exit 1; }
+          echo "✓ Library found"
+
+          # Verify headers exist
+          test -f /opt/ros/jazzy/include/robotops/config/v1/config.pb.h || \
+            { echo "❌ Headers not found"; exit 1; }
+          echo "✓ Headers found"
+
+          # Verify CMake config exists (ament location)
+          test -f /opt/ros/jazzy/share/robotops-config/cmake/robotops-configConfig.cmake || \
+            { echo "❌ CMake config not found"; exit 1; }
+          echo "✓ CMake config found"
+
+          # Check library links to protobuf
+          ldd /opt/ros/jazzy/lib/librobotops-config.so | grep protobuf || \
+            { echo "❌ Protobuf not linked"; exit 1; }
+          echo "✓ Protobuf linked correctly"
+
+          echo "✅ All file checks passed"
+
       - name: Upload to Cloudsmith
         uses: cloudsmith-io/action@v0.6.10
         with:
