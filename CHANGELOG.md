@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.7] - 2026-01-11
+
+### Changed
+
+- **Release Workflows**: Added architecture matrix for multi-platform builds
+  - Build Debian packages for both amd64 and arm64 architectures
+  - Use native runners: ubuntu-24.04 for amd64, ubuntu-24.04-arm for arm64
+  - Each architecture produces separate .deb packages for Cloudsmith
+  - Satisfies downstream dependency requirements for multiple platforms
+
 ## [0.4.6] - 2026-01-11
 
 ### Fixed
