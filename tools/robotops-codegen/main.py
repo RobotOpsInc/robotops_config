@@ -36,6 +36,8 @@ class Annotation:
     unit: Optional[str] = None
     examples: List[str] = dataclass_field(default_factory=list)
     section: Optional[str] = None
+    # Field-level property overrides for nested messages (e.g., @default_enabled false)
+    property_overrides: Dict[str, str] = dataclass_field(default_factory=dict)
 
 @dataclass
 class Field:
@@ -204,8 +206,14 @@ class ProtoParser:
 
     def _parse_annotation(self, comment: str) -> None:
         """Parse structured annotations from a comment"""
+        # @default_<property> <value> (field-level property override for nested messages)
+        if match := re.match(r'@default_(\w+)\s+(.+)$', comment):
+            property_name = match.group(1).strip()
+            value = match.group(2).strip()
+            self.current_annotations.property_overrides[property_name] = value
+
         # @default <value>
-        if match := re.match(r'@default\s+(.+)$', comment):
+        elif match := re.match(r'@default\s+(.+)$', comment):
             # Get the value and stop at parenthetical comments
             value = match.group(1).strip()
             # Remove parenthetical comments like "(except auth which defaults to false)"
@@ -306,7 +314,7 @@ class RustGenerator:
 
         # Initialize ALL fields (Rust requires complete initialization)
         for f in msg.fields:
-            default_val = self._get_default_value(f)
+            default_val = self._get_default_value(f, msg)
             lines.append(f"        {f.name}: {default_val},")
 
         lines.append("    }")
@@ -320,7 +328,7 @@ class RustGenerator:
         result = re.sub('([a-z0-9])([A-Z])', r'\1_\2', result)
         return result.lower()
 
-    def _get_default_value(self, field: Field) -> str:
+    def _get_default_value(self, field: Field, parent_msg: Message) -> str:
         """Get Rust default value for a field (always returns a value)"""
         default = field.annotations.default
 
@@ -379,15 +387,53 @@ class RustGenerator:
             elif field.proto_type == "string":
                 return '"".to_string()'
             else:
+                # Nested message type with property overrides
+                if field.annotations.property_overrides:
+                    return self._generate_rust_struct_with_overrides(field)
                 # Nested message type - use prost's auto-generated Default wrapped in Some()
                 return f"Some({field.proto_type}::default())"
+
+    def _generate_rust_struct_with_overrides(self, field: Field) -> str:
+        """Generate Rust struct initialization with property overrides"""
+        # Build struct with overrides using struct update syntax
+        overrides = []
+        for prop_name, prop_value in field.annotations.property_overrides.items():
+            rust_value = self._format_rust_value(prop_value, prop_name)
+            overrides.append(f"{prop_name}: {rust_value}")
+
+        # Use struct update syntax to fill in defaults for other fields
+        overrides_str = ', '.join(overrides)
+        factory_name = f"create_default_{self._to_snake_case(field.proto_type)}"
+        return f"Some({field.proto_type} {{ {overrides_str}, ..{factory_name}() }})"
+
+    def _format_rust_value(self, value: str, field_name: str = None) -> str:
+        """Format a value for Rust code based on its type"""
+        value = value.strip()
+        # Bool values
+        if value.lower() in ["true", "false"]:
+            return value.lower()
+        # Numeric values
+        try:
+            float(value)
+            return value
+        except ValueError:
+            pass
+        # String values
+        val = value.strip('"').strip("'")
+        return f'"{val}".to_string()'
 
 
 class CppGenerator:
     """Generate C++ defaults.hpp"""
 
+    def __init__(self):
+        self.all_messages = []
+
     def generate(self, messages: List[Message], output_dir: Path) -> None:
         """Generate C++ default factory functions"""
+        # Store all messages for lookup
+        self.all_messages = messages
+
         lines = []
         lines.append("#pragma once")
         lines.append("// Auto-generated defaults for robotops.config.v1")
@@ -419,52 +465,107 @@ class CppGenerator:
         for nested in msg.nested_messages:
             self._generate_message_factory(nested, lines)
 
-        # Skip if no fields have defaults
-        has_defaults = any(f.annotations.default is not None for f in msg.fields)
-        if not has_defaults and not msg.nested_messages:
-            return
-
         # Generate factory function
         lines.append(f"inline {msg.name} CreateDefault{msg.name}() {{")
         lines.append(f"    {msg.name} config;")
 
         for f in msg.fields:
-            setter = self._get_setter_call(f)
-            if setter:
+            setters = self._get_setter_calls(f, msg)
+            for setter in setters:
                 lines.append(f"    {setter};")
 
         lines.append("    return config;")
         lines.append("}")
         lines.append("")
 
-    def _get_setter_call(self, field: Field) -> Optional[str]:
-        """Get C++ setter call for a field"""
-        if not field.annotations.default:
-            return None
+    def _get_setter_calls(self, field: Field, parent_msg: Message) -> List[str]:
+        """Get C++ setter calls for a field (may return multiple for property overrides)"""
+        setters = []
 
         # Skip repeated and map fields - C++ doesn't support setting defaults for these
         if field.is_repeated or field.is_map:
-            return None
+            return setters
+
+        # Check if this field is a nested message type
+        is_message_type = self._is_message_type(field.proto_type)
+
+        # For nested messages, always compose them (even without @default)
+        if is_message_type:
+            # Special handling for Config message nested fields
+            if parent_msg.name == "Config" or self._has_nested_defaults(field.proto_type):
+                setters.append(f"*config.mutable_{field.name}() = CreateDefault{field.proto_type}()")
+            # For other nested messages, only set if there's a @default
+            elif field.annotations.default:
+                setters.append(f"*config.mutable_{field.name}() = CreateDefault{field.proto_type}()")
+
+            # Apply field-level property overrides
+            if field.annotations.property_overrides:
+                for prop_name, prop_value in field.annotations.property_overrides.items():
+                    # Parse the value to the correct C++ type
+                    cpp_value = self._format_cpp_value(prop_value)
+                    setters.append(f"config.mutable_{field.name}()->set_{prop_name}({cpp_value})")
+
+            return setters
+
+        # For scalar types, only set if there's a @default
+        if not field.annotations.default:
+            return setters
 
         default = field.annotations.default
 
-        # Handle different types
+        # Handle different scalar types
         if field.proto_type == "bool":
             val = default.lower()
-            return f"config.set_{field.name}({val})"
+            setters.append(f"config.set_{field.name}({val})")
         elif field.proto_type in ["int32", "int64", "uint32", "uint64"]:
-            return f"config.set_{field.name}({default})"
+            setters.append(f"config.set_{field.name}({default})")
         elif field.proto_type in ["float", "double"]:
-            return f"config.set_{field.name}({default})"
+            setters.append(f"config.set_{field.name}({default})")
         elif field.proto_type == "string":
             # Remove outer quotes if present, escape inner quotes, and re-quote
             val = default.strip('"').strip("'")
             # Escape any remaining quotes in the value
             val = val.replace('\\', '\\\\').replace('"', '\\"')
-            return f'config.set_{field.name}("{val}")'
-        else:
-            # Nested message
-            return f"*config.mutable_{field.name}() = CreateDefault{field.proto_type}()"
+            setters.append(f'config.set_{field.name}("{val}")')
+
+        return setters
+
+    def _format_cpp_value(self, value: str) -> str:
+        """Format a value for C++ code"""
+        value = value.strip()
+        # Bool values
+        if value.lower() in ["true", "false"]:
+            return value.lower()
+        # Numeric values
+        try:
+            float(value)
+            return value
+        except ValueError:
+            pass
+        # String values - quote them
+        val = value.strip('"').strip("'")
+        val = val.replace('\\', '\\\\').replace('"', '\\"')
+        return f'"{val}"'
+
+    def _is_message_type(self, type_name: str) -> bool:
+        """Check if a type name is a message type"""
+        return any(msg.name == type_name for msg in self.all_messages)
+
+    def _has_nested_defaults(self, type_name: str) -> bool:
+        """Check if a message type has any fields with defaults or nested messages"""
+        msg = next((m for m in self.all_messages if m.name == type_name), None)
+        if not msg:
+            return False
+
+        # Check if any field has defaults
+        for field in msg.fields:
+            if field.annotations.default:
+                return True
+            # Check if field is a nested message type
+            if self._is_message_type(field.proto_type):
+                return True
+
+        return False
 
 
 class YamlGenerator:
