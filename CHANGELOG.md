@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.15] - 2026-01-13
+
+### Added
+
+- **Default Config Composition**: Updated `CreateDefaultConfig()` (C++) and `create_default_config()` (Rust) to compose all sub-config defaults into a fully-populated config tree
+  - Top-level Config now includes all nested defaults: robot, backend, tracing, discovery, metrics, subscriptions, tf, monitoring, logging, log_retention, and system_logs
+  - Nested configs are recursively composed (e.g., tracing includes trace_rate, correlation, clock, diagnostics, performance)
+  - Consumers get a complete config with all defaults set out of the box
+
+- **Field-Level Property Annotations**: Added support for `@default_<property>` annotations in proto schema
+  - Allows overriding specific properties of nested message fields declaratively
+  - Example: `@default_enabled false` on `SourceFilteringConfig.auth` field
+  - Generates clean, idiomatic code in both C++ and Rust using property setters and struct update syntax
+  - Replaces hardcoded special-case logic with generic, reusable annotation system
+
+### Changed
+
+- **SourceConfig Auth Defaults**: Auth source filtering now correctly defaults to `enabled: false` (privacy-sensitive, opt-in only)
+  - Specified via `@default_enabled false` annotation on auth field in SourceFilteringConfig
+  - Other sources (kernel, systemd, network) remain `enabled: true` by default
+
 ## [0.4.14] - 2026-01-11
 
 ### Fixed
