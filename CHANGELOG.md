@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.4.16] - 2026-01-14
+
+### Fixed
+
+- **Rust Default Values**: Fixed Rust generator to call factory functions instead of protobuf `::default()`
+  - Nested message fields now correctly use custom `@default` values from proto schema
+  - Previously used protobuf's auto-generated defaults (empty strings, zeros) instead of specified defaults
+  - Example: `TracingConfig` now properly includes defaults for trace_rate, correlation, clock, etc.
+
+- **Function Definition Order**: Both C++ and Rust generators now emit factory functions in dependency order
+  - Functions are defined before they're called, preventing potential forward declaration issues
+  - `create_default_config()` is now at the end of the file after all dependencies
+
 ## [0.4.15] - 2026-01-13
 
 ### Added
