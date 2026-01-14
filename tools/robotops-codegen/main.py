@@ -268,7 +268,9 @@ class RustGenerator:
         lines.append("use super::generated::*;")
         lines.append("")
 
-        for msg in messages:
+        # Generate functions in reverse order (dependencies first)
+        # This ensures functions are defined before they're called
+        for msg in reversed(messages):
             self._generate_message_defaults(msg, lines)
 
         output_file = output_dir / "sdks" / "rust" / "defaults.rs"
@@ -390,8 +392,9 @@ class RustGenerator:
                 # Nested message type with property overrides
                 if field.annotations.property_overrides:
                     return self._generate_rust_struct_with_overrides(field)
-                # Nested message type - use prost's auto-generated Default wrapped in Some()
-                return f"Some({field.proto_type}::default())"
+                # Nested message type - call factory function to get custom defaults
+                factory_name = f"create_default_{self._to_snake_case(field.proto_type)}"
+                return f"Some({factory_name}())"
 
     def _generate_rust_struct_with_overrides(self, field: Field) -> str:
         """Generate Rust struct initialization with property overrides"""
