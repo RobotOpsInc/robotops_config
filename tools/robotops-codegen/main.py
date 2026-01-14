@@ -447,7 +447,9 @@ class CppGenerator:
         lines.append("namespace v1 {")
         lines.append("")
 
-        for msg in messages:
+        # Generate functions in reverse order (dependencies first)
+        # This ensures functions are defined before they're used
+        for msg in reversed(messages):
             self._generate_message_factory(msg, lines)
 
         lines.append("} // namespace v1")
