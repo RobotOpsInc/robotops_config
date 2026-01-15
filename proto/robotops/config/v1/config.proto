@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.5.0"
+  // @default "0.6.0"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -189,6 +189,9 @@ message TracingConfig {
 
   // Performance tuning settings.
   PerformanceConfig performance = 7;
+
+  // Buffer configuration for tail-based sampling.
+  BufferConfig buffer = 8;
 }
 
 // Head-based trace sampling configuration.
@@ -270,6 +273,33 @@ message PerformanceConfig {
   // @default 100
   // @min 0
   int32 failure_threshold = 2;
+}
+
+// Buffer configuration for tail-based sampling.
+message BufferConfig {
+  // Maximum memory usage in megabytes (primary protection).
+  // This stores trace span metadata (~300 bytes/span), NOT raw ROS2 message content.
+  // Raw messages (images, pointclouds) go directly to MCAP via subscription pathway.
+  // @default 50
+  // @min 1
+  uint32 max_memory_mb = 1;
+
+  // Maximum age of spans in seconds (failsafe timeout).
+  // @default 300
+  // @min 1
+  uint64 max_span_age_secs = 2;
+
+  // Memory utilization threshold for warnings (0.0 - 1.0).
+  // @default 0.70
+  // @min 0.0
+  // @max 1.0
+  double warning_threshold = 3;
+
+  // Memory utilization threshold for aggressive eviction (0.0 - 1.0).
+  // @default 0.90
+  // @min 0.0
+  // @max 1.0
+  double critical_threshold = 4;
 }
 
 // =============================================================================

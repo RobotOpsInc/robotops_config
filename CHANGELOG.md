@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.6.0] - 2026-01-15
+
+### Added
+
+- **Trace Buffer Configuration**: Added `BufferConfig` message to `TracingConfig` for tail-based sampling support in robot_agent (ROB-56)
+  - `max_memory_mb` (default: `50`): Maximum memory usage for trace span metadata buffer (~150k spans)
+  - `max_span_age_secs` (default: `300`): Failsafe timeout for span eviction (5 minutes)
+  - `warning_threshold` (default: `0.70`): Memory utilization threshold for warnings
+  - `critical_threshold` (default: `0.90`): Memory utilization threshold for aggressive eviction
+  - Note: Buffer stores trace span metadata only (~300 bytes/span), not raw ROS2 message content
+
 ## [0.5.0] - 2026-01-14
 
 ### Added
