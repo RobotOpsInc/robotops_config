@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.5.0] - 2026-01-14
+
+### Added
+
+- **TF Deduplication**: Added `enable_deduplication_metadata` (default: `true`) and `max_snapshot_interval_secs` (default: `5.0`) fields to `TfConfig` for TF snapshot deduplication support. Enables hash-based detection of identical snapshots for significant storage savings during stationary periods.
+
 ## [0.4.16] - 2026-01-14
 
 ### Fixed
