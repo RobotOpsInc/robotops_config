@@ -21,6 +21,12 @@ By maintaining configuration in a dedicated public repository, we ensure:
 
 robotops-config is distributed as a Debian package via AWS S3 and installs as a ROS2 system package alongside robotops_msgs and rmw_robotops.
 
+> ⚠️ **Important:** Production and development repositories are **mutually exclusive**. Do not add both repositories simultaneously, as they publish packages with the same name and version. Choose one environment based on your needs:
+> - **Production**: Stable releases for production use
+> - **Development**: Pre-release versions for testing only
+>
+> To switch environments, remove one repository before adding the other.
+
 #### Production Repository
 
 Add the RobotOps APT repository:

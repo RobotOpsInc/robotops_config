@@ -35,8 +35,9 @@ runs:
         echo "deb [signed-by=/etc/apt/keyrings/aptly.gpg] http://repo.aptly.info/ squeeze main" | sudo tee /etc/apt/sources.list.d/aptly.list
 
         # Install Aptly and dependencies
+        # Note: AWS CLI is pre-installed on GitHub Actions runners
         sudo apt-get update
-        sudo apt-get install -y aptly gnupg2 awscli
+        sudo apt-get install -y aptly gnupg2
 
     - name: Import GPG Key
       shell: bash
