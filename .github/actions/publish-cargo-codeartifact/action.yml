@@ -63,17 +63,16 @@ runs:
         [registries.codeartifact]
         index = "sparse+${CODEARTIFACT_ENDPOINT}"
 
+        [registry]
+        global-credential-providers = ["cargo:token"]
+
         [net]
         git-fetch-with-cli = true
         EOF
 
-        # Set up credentials
-        cat > ~/.cargo/credentials.toml <<EOF
-        [registries.codeartifact]
-        token = "Bearer ${CODEARTIFACT_AUTH_TOKEN}"
-        EOF
+        # Set token as environment variable (modern Cargo approach)
+        echo "CARGO_REGISTRIES_CODEARTIFACT_TOKEN=Bearer ${CODEARTIFACT_AUTH_TOKEN}" >> $GITHUB_ENV
 
-        chmod 600 ~/.cargo/credentials.toml
         echo "✅ Cargo registry configured"
 
     - name: Publish to CodeArtifact
