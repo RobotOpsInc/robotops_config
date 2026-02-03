@@ -19,7 +19,39 @@ By maintaining configuration in a dedicated public repository, we ensure:
 
 ### As a ROS2 System Package (Recommended)
 
-robotops-config is distributed as a source Debian package and installs as a ROS2 system package alongside robotops_msgs and rmw_robotops.
+robotops-config is distributed as a Debian package via AWS S3 and installs as a ROS2 system package alongside robotops_msgs and rmw_robotops.
+
+#### Production Repository
+
+Add the RobotOps APT repository:
+
+```bash
+# Import GPG key
+curl -fsSL https://apt.robotops.com/robotops-public-key.asc | sudo gpg --dearmor -o /etc/apt/keyrings/robotops.gpg
+
+# Add repository
+echo "deb [signed-by=/etc/apt/keyrings/robotops.gpg] https://apt.robotops.com noble main" | sudo tee /etc/apt/sources.list.d/robotops.list
+
+# Update and install
+sudo apt update
+sudo apt install ros-jazzy-robotops-config
+```
+
+#### Development Repository (Testing Only)
+
+For testing pre-release versions:
+
+```bash
+# Import GPG key
+curl -fsSL https://apt.development.robotops.com/robotops-public-key.asc | sudo gpg --dearmor -o /etc/apt/keyrings/robotops-dev.gpg
+
+# Add development repository
+echo "deb [signed-by=/etc/apt/keyrings/robotops-dev.gpg] https://apt.development.robotops.com noble main" | sudo tee /etc/apt/sources.list.d/robotops-dev.list
+
+# Update and install
+sudo apt update
+sudo apt install ros-jazzy-robotops-config
+```
 
 **Using rosdep and colcon (standard ROS2 workflow):**
 
@@ -259,10 +291,23 @@ string underlying_rmw = 3;
 
 **Rust (robot_agent):**
 
+First, configure AWS CodeArtifact:
+
+```bash
+# Authenticate with CodeArtifact
+aws codeartifact login --tool cargo \
+  --domain robotops \
+  --domain-owner 189676910689 \
+  --repository robotops-cargo \
+  --region us-east-1
+```
+
+Then add to your `Cargo.toml`:
+
 ```toml
 # Cargo.toml
 [dependencies]
-robotops-config = { version = "0.3", registry = "cloudsmith" }
+robotops-config = { version = "0.3", registry = "codeartifact" }
 ```
 
 ```rust
@@ -345,8 +390,8 @@ The workflow will fail if triggered from any branch other than `main`.
 The release will:
 - Create a git tag matching the VERSION (e.g., `v0.4.0`)
 - Auto-populate release notes from CHANGELOG.md
-- Publish Rust crate to Cloudsmith Cargo registry
-- Build and publish Debian source package to Cloudsmith
+- Publish Rust crate to AWS CodeArtifact
+- Build and publish Debian packages to AWS S3 (via Aptly)
 - Upload YAML config as release asset
 
 ### Development Releases
@@ -356,22 +401,24 @@ Development releases can be manually triggered from the `development` branch for
 **Key Differences:**
 - **Version**: Same as main (e.g., `0.3.13`)
 - **Trigger**: Manual via GitHub Actions (from `development` branch only)
-- **Repository**: Publishes to `robotops-development` Cloudsmith repository
-- **GitHub**: Released normally but from development branch
+- **Repository**: Publishes to development S3 bucket (`apt.development.robotops.com`)
+- **GitHub**: Creates pre-release from development branch
 - **Purpose**: Testing only - not for production
 
 **Creating a Dev Release:**
 
 1. Merge your feature to `development` and push to GitHub
-2. Go to **Actions** → **Release** → **Run workflow**
+2. Go to **Actions** → **Release Development** → **Run workflow**
 3. Select "development" from the branch dropdown
 4. Click **Run workflow**
 
 **Using Dev Packages:**
 
 ```bash
-# Add development Cloudsmith repository
-sudo curl -1sLf 'https://dl.cloudsmith.io/public/robotops/robotops-development/cfg/setup/bash.deb.sh' | sudo bash
+# Add development APT repository
+curl -fsSL https://apt.development.robotops.com/robotops-public-key.asc | sudo gpg --dearmor -o /etc/apt/keyrings/robotops-dev.gpg
+echo "deb [signed-by=/etc/apt/keyrings/robotops-dev.gpg] https://apt.development.robotops.com noble main" | sudo tee /etc/apt/sources.list.d/robotops-dev.list
+sudo apt update
 sudo apt install ros-jazzy-robotops-config
 
 # Or build from source directly
@@ -382,7 +429,7 @@ colcon build
 ```bash
 # YAML Config from development release
 curl -L -o config.yaml \
-  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.3.13/config.yaml
+  https://github.com/RobotOpsInc/robotops_config/releases/download/v0.3.13-development-{commit_sha}/config.yaml
 ```
 
 ## Maintenance
