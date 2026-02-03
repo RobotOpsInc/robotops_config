@@ -71,7 +71,8 @@ runs:
         EOF
 
         # Set token as environment variable (modern Cargo approach)
-        echo "CARGO_REGISTRIES_CODEARTIFACT_TOKEN=Bearer ${CODEARTIFACT_AUTH_TOKEN}" >> $GITHUB_ENV
+        # Note: Cargo adds "Bearer " prefix automatically, so just pass the token
+        echo "CARGO_REGISTRIES_CODEARTIFACT_TOKEN=${CODEARTIFACT_AUTH_TOKEN}" >> $GITHUB_ENV
 
         echo "✅ Cargo registry configured"
 

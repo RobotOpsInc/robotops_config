@@ -78,8 +78,7 @@ runs:
           "S3PublishEndpoints": {
             "robotops": {
               "region": "${{ inputs.aws-region }}",
-              "bucket": "${{ inputs.apt-bucket }}",
-              "acl": "public-read"
+              "bucket": "${{ inputs.apt-bucket }}"
             }
           },
           "SwiftPublishEndpoints": {}
