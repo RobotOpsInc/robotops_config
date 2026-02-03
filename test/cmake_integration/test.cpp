@@ -5,7 +5,7 @@
 int main() {
     // Test that we can create a protobuf message
     robotops::config::v1::Config config;
-    config.set_schema_version("0.6.0");
+    config.set_schema_version("0.7.0");
 
     // Test that defaults.hpp is accessible and functions work
     robotops::config::v1::Config default_config = robotops::config::v1::CreateDefaultConfig();

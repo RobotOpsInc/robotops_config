@@ -1,0 +1,114 @@
+name: 'Publish Cargo Crate to AWS CodeArtifact'
+description: 'Publishes Rust crates to AWS CodeArtifact'
+
+inputs:
+  aws-region:
+    description: 'AWS region'
+    required: false
+    default: 'us-east-1'
+  aws-account-id:
+    description: 'AWS account ID'
+    required: true
+  codeartifact-domain:
+    description: 'CodeArtifact domain name'
+    required: true
+  codeartifact-repo:
+    description: 'CodeArtifact repository name'
+    required: true
+  cargo-package-path:
+    description: 'Path to the Cargo package to publish'
+    required: false
+    default: '.'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get CodeArtifact Auth Token
+      shell: bash
+      run: |
+        echo "Getting CodeArtifact authentication token..."
+        export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+          --domain ${{ inputs.codeartifact-domain }} \
+          --domain-owner ${{ inputs.aws-account-id }} \
+          --region ${{ inputs.aws-region }} \
+          --query authorizationToken \
+          --output text)
+
+        if [ -z "$CODEARTIFACT_AUTH_TOKEN" ]; then
+          echo "Error: Failed to get CodeArtifact auth token"
+          exit 1
+        fi
+
+        echo "CODEARTIFACT_AUTH_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
+        echo "✅ CodeArtifact authentication successful"
+
+    - name: Configure Cargo Registry
+      shell: bash
+      run: |
+        # Get the CodeArtifact repository endpoint
+        export CODEARTIFACT_ENDPOINT=$(aws codeartifact get-repository-endpoint \
+          --domain ${{ inputs.codeartifact-domain }} \
+          --domain-owner ${{ inputs.aws-account-id }} \
+          --repository ${{ inputs.codeartifact-repo }} \
+          --format cargo \
+          --region ${{ inputs.aws-region }} \
+          --query repositoryEndpoint \
+          --output text)
+
+        echo "CodeArtifact endpoint: $CODEARTIFACT_ENDPOINT"
+
+        # Configure Cargo
+        mkdir -p ~/.cargo
+        cat > ~/.cargo/config.toml <<EOF
+        [registries.codeartifact]
+        index = "sparse+${CODEARTIFACT_ENDPOINT}"
+
+        [net]
+        git-fetch-with-cli = true
+        EOF
+
+        # Set up credentials
+        cat > ~/.cargo/credentials.toml <<EOF
+        [registries.codeartifact]
+        token = "Bearer ${CODEARTIFACT_AUTH_TOKEN}"
+        EOF
+
+        chmod 600 ~/.cargo/credentials.toml
+        echo "✅ Cargo registry configured"
+
+    - name: Publish to CodeArtifact
+      shell: bash
+      working-directory: ${{ inputs.cargo-package-path }}
+      run: |
+        echo "Publishing crate to CodeArtifact..."
+
+        # Get package name and version from Cargo.toml
+        PACKAGE_NAME=$(grep -m1 '^name = ' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
+        PACKAGE_VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+
+        echo "Package: ${PACKAGE_NAME} v${PACKAGE_VERSION}"
+
+        # Publish to CodeArtifact registry
+        cargo publish --registry codeartifact --allow-dirty
+
+        echo "✅ Successfully published ${PACKAGE_NAME} v${PACKAGE_VERSION} to CodeArtifact"
+
+    - name: Summary
+      shell: bash
+      working-directory: ${{ inputs.cargo-package-path }}
+      run: |
+        PACKAGE_NAME=$(grep -m1 '^name = ' Cargo.toml | sed 's/name = "\(.*\)"/\1/')
+        PACKAGE_VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+
+        echo "## 📦 Cargo Package Published" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package:** ${PACKAGE_NAME}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version:** ${PACKAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Registry:** CodeArtifact (${{ inputs.codeartifact-domain }}/${{ inputs.codeartifact-repo }})" >> $GITHUB_STEP_SUMMARY
+        echo "- **Region:** ${{ inputs.aws-region }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "To use this crate:" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "aws codeartifact login --tool cargo --domain ${{ inputs.codeartifact-domain }} --domain-owner ${{ inputs.aws-account-id }} --repository ${{ inputs.codeartifact-repo }} --region ${{ inputs.aws-region }}" >> $GITHUB_STEP_SUMMARY
+        echo "cargo add ${PACKAGE_NAME} --registry codeartifact" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
