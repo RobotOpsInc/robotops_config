@@ -7,23 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.7.3] - 2026-02-05
+
+### Fixed
+
+- **GitHub Actions Debian S3 Publishing**: Fixed aptly command parsing in publish-debian-s3 action
+  - Added `-raw` flag to `aptly repo list` for machine-readable repo name output
+  - Added `-raw` flag to `aptly publish list` with proper pattern matching (`^s3:robotops: ${dist}$`)
+  - Ensures reliable grep pattern matching without formatting interference
+  - Machine-readable format outputs repo names one per line and "endpoint distribution" for publish list
+
 ## [0.7.2] - 2026-02-03
 
 ### Changed
 
-- TODO: Describe changes
+- Describe changes
 
 ## [0.7.1] - 2026-02-03
 
 ### Changed
 
-- TODO: Describe changes
+- Describe changes
 
 ## [0.7.0] - 2026-02-03
 
 ### Changed
 
-- TODO: Describe changes
+- Describe changes
 
 ## [0.6.0] - 2026-01-15
 
