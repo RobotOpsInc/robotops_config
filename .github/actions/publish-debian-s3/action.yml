@@ -111,7 +111,7 @@ runs:
         fi
 
         # Check if repo exists, create if not
-        if ! aptly repo list | grep -q "^${REPO_NAME}$"; then
+        if ! aptly repo list -raw | grep -q "^${REPO_NAME}$"; then
           echo "Creating new Aptly repository: ${REPO_NAME}"
           aptly repo create -distribution=noble -component=main ${REPO_NAME}
         else
@@ -138,7 +138,7 @@ runs:
         # For each distribution
         for dist in $DISTRIBUTIONS; do
           # Check if this distribution is already published
-          if aptly publish list | grep -q "s3:robotops:${dist}"; then
+          if aptly publish list -raw | grep -q "^s3:robotops: ${dist}$"; then
             echo "Updating existing publication for ${dist}..."
             aptly publish update -batch -passphrase="${GPG_PASSPHRASE}" -gpg-key="${GPG_KEY_ID}" ${dist} s3:robotops:
           else
