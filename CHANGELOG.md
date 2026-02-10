@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.8.0] - 2026-02-09
+
+### Added
+
+- Add `StorageConfig` section for configurable MCAP telemetry storage (ROB-134)
+  - `storage.path`: Base directory for MCAP files (default: `/var/tmp/robot_agent/telemetry`)
+  - `storage.max_file_size_mb`: Maximum file size before rotation (default: 100 MB)
+  - `storage.max_file_age_secs`: Maximum file age before rotation (default: 3600 seconds)
+
 ## [0.7.4] - 2026-02-05
 
 ### Changed
