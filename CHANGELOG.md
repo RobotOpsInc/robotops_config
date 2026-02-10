@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.0] - 2026-02-10
+
+### Added
+
+- Add `RecorderConfig` section for Black Box Recorder configuration (ROB-98)
+  - `recorder.enabled`: Master enable/disable switch (default: true)
+  - `recorder.ring_buffer`: Ring buffer memory and lookback settings
+    - `max_memory_mb`: Global memory limit for all topic ring buffers (default: 500 MB)
+    - `default_lookback_seconds`: Default lookback duration when exporting (default: 30 seconds)
+  - `recorder.topics`: Topic selection for recording
+    - `include`: Topics to record as regex patterns (default: [".*"])
+    - `exclude`: Topics to exclude (default: ["/rosout", "/parameter_events", "/robotops/.*"])
+  - `recorder.tf`: TF handling for recordings
+    - `enabled`: Enable TF recording (default: true)
+    - `max_hz`: Rate limit for /tf topic (default: 30.0 Hz)
+  - `recorder.flush`: Flush (export) settings
+    - `post_event_buffer_seconds`: Time to continue capturing after triggering event (default: 5 seconds)
+    - `output_dir`: Output directory for recorder MCAP files (default: "/var/tmp/robotops/recordings")
+    - `compression`: Compression algorithm (default: "lz4", options: lz4, zstd, none)
+    - `max_recordings`: Maximum number of recordings to keep on disk (default: 100)
+    - `max_disk_mb`: Maximum total disk space for recordings (default: 5000 MB)
+  - `recorder.action_overrides`: Per-action overrides (first matching pattern wins)
+
 ## [0.8.0] - 2026-02-09
 
 ### Added
