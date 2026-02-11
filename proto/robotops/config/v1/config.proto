@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.8.0"
+  // @default "0.9.0"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -55,6 +55,9 @@ message Config {
 
   // MCAP telemetry storage.
   StorageConfig storage = 15;
+
+  // Black box recorder configuration.
+  RecorderConfig recorder = 16;
 }
 
 // =============================================================================
@@ -843,4 +846,104 @@ message StorageConfig {
   // @default 3600
   // @min 1
   int32 max_file_age_secs = 3;
+}
+
+// =============================================================================
+// @section Black Box Recorder
+// =============================================================================
+
+// Black box recorder configuration for continuous message buffering and event-triggered flush.
+message RecorderConfig {
+  // Master enable/disable switch for the recorder.
+  // @default true
+  // @env ROBOT_OPS_AGENT_RECORDER_ENABLED
+  bool enabled = 1;
+
+  // Ring buffer memory and lookback settings.
+  RecorderRingBufferConfig ring_buffer = 2;
+
+  // Topic selection for recording.
+  RecorderTopicFilterConfig topics = 3;
+
+  // TF handling for recordings.
+  RecorderTfConfig tf = 4;
+
+  // Flush (export) settings.
+  RecorderFlushConfig flush = 5;
+
+  // Per-action overrides (first matching pattern wins).
+  repeated RecorderActionOverride action_overrides = 6;
+}
+
+message RecorderActionOverride {
+  // Regex pattern to match action type names (first match wins).
+  // @example ".*EmergencyStop.*"
+  string pattern = 1;
+
+  // Override lookback duration (seconds). 0 = use default.
+  int32 lookback_seconds = 2;
+
+  // Override topic filter for this action (optional).
+  RecorderTopicFilterConfig topics = 3;
+}
+
+message RecorderRingBufferConfig {
+  // Global memory limit for all topic ring buffers (MB).
+  // @default 500
+  // @min 10
+  int32 max_memory_mb = 1;
+
+  // Default lookback duration when exporting (seconds).
+  // @default 30
+  // @min 1
+  int32 default_lookback_seconds = 2;
+}
+
+message RecorderTopicFilterConfig {
+  // Topics to record (regex patterns). Empty = record all.
+  // @default [".*"]
+  repeated string include = 1;
+
+  // Topics to exclude (applied after include).
+  // @default ["/rosout", "/parameter_events", "/robotops/.*"]
+  repeated string exclude = 2;
+}
+
+message RecorderTfConfig {
+  // Enable TF recording in ring buffer.
+  // @default true
+  bool enabled = 1;
+
+  // Rate limit for /tf topic (Hz). /tf_static is always captured in full.
+  // @default 30.0
+  // @min 1.0
+  double max_hz = 2;
+}
+
+message RecorderFlushConfig {
+  // Time to continue capturing after triggering event (seconds).
+  // @default 5
+  // @min 0
+  int32 post_event_buffer_seconds = 1;
+
+  // Output directory for recorder MCAP files.
+  // @default "/var/tmp/robotops/recordings"
+  string output_dir = 2;
+
+  // Compression algorithm for recorder MCAP files.
+  // @default "lz4"
+  // @enum lz4
+  // @enum zstd
+  // @enum none
+  string compression = 3;
+
+  // Maximum number of recordings to keep on disk.
+  // @default 100
+  // @min 1
+  int32 max_recordings = 4;
+
+  // Maximum total disk space for recordings (MB).
+  // @default 5000
+  // @min 1
+  int32 max_disk_mb = 5;
 }
