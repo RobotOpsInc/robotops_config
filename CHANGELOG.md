@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.2] - 2026-03-22
+
+### Fixed
+
+- Add `apt-get update` before package installation in release workflow to fix arm64 CI failures caused by stale package cache
+
 ## [0.9.1] - 2026-03-22
 
 ### Changed
