@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.1] - 2026-03-22
+
+### Changed
+
+- Reduce default `StorageConfig` rotation thresholds for near-real-time MCAP delivery (ROB-100)
+  - `storage.max_file_size_mb`: 100 MB → 10 MB
+  - `storage.max_file_age_secs`: 3600 s → 30 s
+  - Reduces worst-case data latency from ~1 hour to ~30 seconds for low-traffic robots
+  - Operators can override via `ROBOT_OPS_AGENT_STORAGE_MAX_FILE_SIZE_MB` / `ROBOT_OPS_AGENT_STORAGE_MAX_FILE_AGE_SECS` env vars
+
 ## [0.9.0] - 2026-02-10
 
 ### Added
