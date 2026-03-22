@@ -168,6 +168,7 @@ jobs:
       - name: Validate package CMake integration
         run: |
           echo "Installing package for validation..."
+          sudo apt-get update
           sudo dpkg -i ${{ steps.deb.outputs.file }} || sudo apt-get install -f -y
 
           echo "Installing build dependencies for integration test..."
