@@ -7,7 +7,7 @@ Shared configuration for RobotOps distributed tracing and monitoring infrastruct
 This repository provides a single source of truth for RobotOps configuration consumed by:
 
 - **`rmw_robotops`** - Public ROS 2 RMW implementation with distributed tracing
-- **`robot_agent`** - Private telemetry collection and export agent
+- **TraceHouse** - Private telemetry collection and export agent. The installed package/service identifiers still use `robot_agent` for compatibility.
 
 By maintaining configuration in a dedicated public repository, we ensure:
 
@@ -115,7 +115,9 @@ https://github.com/RobotOpsInc/robotops_config/releases/download/{tag}/config.ya
 
 ## Usage
 
-Both `rmw_robotops` and `robot_agent` read configuration from `/etc/robotops/config.yaml` by default.
+Both `rmw_robotops` and TraceHouse read configuration from `/etc/robotops/config.yaml` by default.
+
+Compatibility note: TraceHouse currently retains the `robot_agent` package/service identifier and related integration names, so references to that identifier in package managers, service units, or dependency metadata are intentional.
 
 You can override the location using the `ROBOTOPS_CONFIG_PATH` environment variable:
 
@@ -137,7 +139,7 @@ Key sections include:
 - **Metrics** - System and ROS metrics collection settings
 - **Subscriptions** - Adaptive capture strategies for bandwidth optimization
 - **TF Monitoring** - Transform tree snapshot configuration
-- **Logging** - Agent and system log capture settings
+- **Logging** - TraceHouse and system log capture settings
 
 ## Versioning
 
@@ -147,7 +149,7 @@ This repository uses **semantic versioning** expressed via git tags (e.g., `v1.0
 
 **Major versions** move in lockstep across the entire RobotOps ecosystem:
 
-- `robot_agent`
+- TraceHouse (`robot_agent` package/service identifier)
 - `rmw_robotops`
 - `robotops_msgs`
 - `robotops_config` (this repository)
@@ -170,7 +172,7 @@ robotops_config v1.0.0   ←  Initial stable release
 robotops_config v1.1.0   ←  Added new config section (backward compatible)
 robotops_config v1.1.1   ←  Fixed typo in default.yaml
 
-robot_agent v1.2.0       ←  May be ahead (added new feature)
+TraceHouse v1.2.0        ←  May be ahead (added new feature)
 rmw_robotops v1.0.3      ←  May be behind (only bug fixes)
 
 robotops_config v2.0.0   ←  Breaking change: all components bump major version
@@ -208,7 +210,7 @@ robotops_config/
 
 - **Single source of truth**: Proto schema defines types, defaults, and documentation
 - **Generated SDKs**: Auto-generated Rust and C++ bindings with `Default` implementations
-- **Versioned packages**: Published to Cloudsmith for consumption by `robot_agent` and `rmw_robotops`
+- **Versioned packages**: Published to Cloudsmith for consumption by TraceHouse and `rmw_robotops`
 - **Human-readable YAML**: Auto-generated `default.yaml` with inline documentation
 - **Breaking change detection**: `buf breaking` prevents unintentional API breakage
 
@@ -295,7 +297,7 @@ string underlying_rmw = 3;
 
 ### Consuming Generated SDKs
 
-**Rust (robot_agent):**
+**Rust (TraceHouse):**
 
 First, configure AWS CodeArtifact:
 
