@@ -3,7 +3,7 @@ syntax = "proto3";
 package robotops.config.v1;
 
 // =============================================================================
-// @section Robot Agent Configuration
+// @section TraceHouse Configuration
 // Auto-generated SDK code from this schema - see robotops_config repository
 // =============================================================================
 
@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.9.2"
+  // @default "0.9.3"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -44,7 +44,7 @@ message Config {
   // Action and service monitoring.
   MonitoringConfig monitoring = 11;
 
-  // Agent logging configuration.
+  // TraceHouse logging configuration.
   LoggingConfig logging = 12;
 
   // Log retention policies.
@@ -165,7 +165,7 @@ message BackendConfig {
 // @section Distributed Tracing
 // =============================================================================
 
-// Distributed tracing configuration for rmw_robotops and robot_agent.
+// Distributed tracing configuration for rmw_robotops and TraceHouse.
 message TracingConfig {
   // Master enable switch for distributed tracing.
   // When false, rmw_robotops acts as a pure passthrough with zero overhead.
@@ -578,13 +578,13 @@ message ServiceMonitoringConfig {
 // @section Logging
 // =============================================================================
 
-// Agent logging configuration.
+// TraceHouse logging configuration.
 message LoggingConfig {
   // Capture ROS2 logs from /rosout topic.
   // @default true
   bool capture_rosout = 1;
 
-  // Agent log level.
+  // TraceHouse log level.
   // @default "info"
   // @enum trace
   // @enum debug
@@ -645,6 +645,7 @@ message FileOutputConfig {
   bool enabled = 1;
 
   // Log file path.
+  // Compatibility note: the default keeps the legacy robot_ops_agent path segment.
   // @default "/var/log/robot_ops_agent"
   string path = 2;
 
@@ -834,6 +835,7 @@ message DeduplicationConfig {
 // MCAP telemetry file storage configuration.
 message StorageConfig {
   // Base directory path for MCAP telemetry files.
+  // Compatibility note: the default keeps the legacy robot_agent path segment.
   // @default "/var/tmp/robot_agent/telemetry"
   string path = 1;
 
