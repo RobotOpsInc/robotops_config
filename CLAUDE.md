@@ -5,3 +5,32 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Git Workflow
 
 For Linear issues, do all work in a worktree created from the Linear issue branch name. Set-head the worktree to `development` before branching, and open PRs against `development`.
+
+## Canopy — Knowledge Graph
+
+The org-wide knowledge graph is at `RobotOpsInc/canopy` (`vault/`). This repo is
+documented at `vault/projects/robotops-config/`.
+
+The vault slug is the repo name lowercased with underscores replaced by hyphens
+(e.g. `robot_agent` → `robot-agent`, `web_app` → `web-app`).
+
+### Read Canopy before…
+
+* Making an architectural decision — check `vault/decisions/` and
+  `vault/projects/robotops-config/decisions/`
+* Touching a shared interface (protos, RMW API, config schema) — read the relevant
+  project pages to understand what downstream repos depend on
+* Investigating a regression that might be a known incident — check `vault/incidents/`
+
+### Leave a raw note when…
+
+When something notable happens — a decision is made, a public interface changes, a
+non-obvious bug is fixed, a constraint is discovered — create a file at:
+
+`vault/_raw/robotops-config-YYYY-MM-DD-<short-slug>.md`
+
+in the `RobotOpsInc/canopy` repo and open a PR against `main`. Keep it factual: what
+changed, why, any cross-repo implications. Especially for anything architectural or a
+new feature, describe in detail. You can use illustrations, links, text — the ingestion
+pipeline is very flexible. The canopy ingest workflow handles everything from there.
+Do not write vault pages directly.

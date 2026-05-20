@@ -580,7 +580,7 @@ class YamlGenerator:
         """Generate YAML config with inline documentation"""
         lines = []
         lines.append("# =============================================================================")
-        lines.append("# Robot Agent Configuration")
+        lines.append("# TraceHouse Configuration")
         lines.append("# Auto-generated from proto schema - DO NOT EDIT")
         lines.append("# =============================================================================")
         lines.append("")

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.3] - 2026-05-19
+
+### Changed
+
+- TODO: Describe changes
+
 ## [0.9.2] - 2026-03-22
 
 ### Fixed
@@ -93,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Trace Buffer Configuration**: Added `BufferConfig` message to `TracingConfig` for tail-based sampling support in robot_agent (ROB-56)
+- **Trace Buffer Configuration**: Added `BufferConfig` message to `TracingConfig` for tail-based sampling support in TraceHouse (ROB-56)
   - `max_memory_mb` (default: `50`): Maximum memory usage for trace span metadata buffer (~150k spans)
   - `max_span_age_secs` (default: `300`): Failsafe timeout for span eviction (5 minutes)
   - `warning_threshold` (default: `0.70`): Memory utilization threshold for warnings
@@ -494,7 +500,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clock synchronization configuration
   - Diagnostics publishing settings
   - Performance tuning parameters
-- Full robot_agent configuration sections:
+- Full TraceHouse configuration sections:
   - Robot identity and fleet management
   - Deployment version tracking
   - Backend authentication and connectivity
