@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.9.3"
+  // @default "0.9.4"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -58,6 +58,9 @@ message Config {
 
   // Black box recorder configuration.
   RecorderConfig recorder = 16;
+
+  // Topic ingest selection and safety limits.
+  TopicIngestConfig topic_ingest = 17;
 }
 
 // =============================================================================
@@ -325,6 +328,34 @@ message DiscoveryConfig {
 
   // Topic blacklist (regex patterns, optional).
   repeated string topic_blacklist = 3;
+}
+
+// =============================================================================
+// @section Topic Ingest
+// =============================================================================
+
+// Topic ingest selection and safety limits.
+message TopicIngestConfig {
+  // Enable topic message ingest.
+  // @default false
+  bool enabled = 1;
+
+  // Use the built-in safe topic allowlist before applying include/exclude rules.
+  // @default true
+  bool use_builtin_allowlist = 2;
+
+  // Additional topics to ingest (regex patterns). Empty = no additional topics.
+  // @default []
+  repeated string include = 3;
+
+  // Topics to exclude from ingest after built-in and include rules are applied (regex patterns).
+  // @default []
+  repeated string exclude = 4;
+
+  // Maximum serialized message size eligible for ingest (bytes).
+  // @default 1048576
+  // @min 1
+  int64 max_message_size_bytes = 5;
 }
 
 // =============================================================================
