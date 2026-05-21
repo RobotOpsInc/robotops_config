@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
-## [0.9.3] - 2026-05-19
+## [0.9.4] - 2026-05-20
 
-### Changed
+### Added
 
-- TODO: Describe changes
+- Add `TopicIngestConfig` to the shared schema for selective topic promotion and ingest safety limits.
+  - `topic_ingest.enabled`
+  - `topic_ingest.use_builtin_allowlist`
+  - `topic_ingest.include`
+  - `topic_ingest.exclude`
+  - `topic_ingest.max_message_size_bytes`
 
 ## [0.9.2] - 2026-03-22
 
