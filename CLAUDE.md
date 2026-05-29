@@ -6,6 +6,10 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 For Linear issues, do all work in a worktree created from the Linear issue branch name. Set-head the worktree to `development` before branching, and open PRs against `development`.
 
+## AI Contribution Policy
+
+When using generative AI assistance, review and test all changes before submitting them. Do not include confidential, proprietary, or third-party content in prompts or generated output unless RobotOps has the right to share and license it. Disclose meaningful AI assistance in the commit message or pull request description.
+
 ## Internal Robot Ops Guidance
 
 For Robot Ops safety and consistency checks, consult `RobotOpsInc/canopy` (`vault/`) alongside the repo and related code paths before making changes. This repo is documented at `vault/projects/robotops-config/`.
