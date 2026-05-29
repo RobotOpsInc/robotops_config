@@ -444,7 +444,7 @@ curl -L -o config.yaml \
 
 This repository is maintained by the **Robot Ops team** and is publicly available for the ROS 2 community.
 
-For questions, issues, or contributions, please refer to our main documentation or contact the Robot Ops team.
+For questions or issues, please refer to our main documentation or contact the Robot Ops team. For contribution guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
