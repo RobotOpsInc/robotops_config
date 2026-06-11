@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.6] - 2026-06-11
+
+### Added
+
+- Add subscription gating policy and QoS defaults to `SubscriptionsConfig` for topic visibility and least-intrusive compatible subscriptions.
+
 ## [0.9.5] - 2026-05-29
 
 ### Changed
