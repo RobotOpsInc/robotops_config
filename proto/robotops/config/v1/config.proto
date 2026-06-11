@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.9.5"
+  // @default "0.9.6"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -435,6 +435,26 @@ message SubscriptionsConfig {
 
   // Per-topic overrides using regex patterns.
   repeated TopicOverride topic_overrides = 4;
+
+  // Default subscription gating policy for topics without a matching override.
+  // monitored = subscribe + capture; discovered_only = visible in topology with
+  // no subscription/DDS reader created (zero observer cost); opt_in = excluded
+  // unless explicitly enabled.
+  // @default "monitored"
+  // @enum monitored
+  // @enum discovered_only
+  // @enum opt_in
+  string default_policy = 5;
+
+  // Default subscription QoS reliability. auto = best-effort+volatile when any
+  // matched publisher offers best-effort (least intrusive, compatible with both
+  // reliable and best-effort publishers), reliable only where all publishers are
+  // reliable; best_effort / reliable force the choice.
+  // @default "auto"
+  // @enum auto
+  // @enum best_effort
+  // @enum reliable
+  string default_qos = 6;
 }
 
 // Adaptive rate limiting configuration.
@@ -488,6 +508,19 @@ message TopicOverride {
   // @min 0.0
   // @max 100.0
   double sample_percentage = 4;
+
+  // Subscription gating policy override for this topic (overrides the
+  // auto-classifier and the subscriptions default_policy). Unset = use default.
+  // @enum monitored
+  // @enum discovered_only
+  // @enum opt_in
+  string policy = 5;
+
+  // Subscription QoS reliability override for this topic. Unset = use default.
+  // @enum auto
+  // @enum best_effort
+  // @enum reliable
+  string qos = 6;
 }
 
 // =============================================================================
