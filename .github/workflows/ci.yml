@@ -107,13 +107,36 @@ jobs:
           echo "C++ package validated successfully"
 
   test-ros2-package-integration:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # One entry per (ROS distro, Ubuntu codename, arch). The distro selects
+        # the ros:<distro> base image + /opt/ros/<distro>; os_version is the
+        # Ubuntu codename bloom stamps into the .deb (noble for jazzy, jammy for
+        # humble). The runner must match the deb's Ubuntu target so the on-host
+        # dpkg install + CMake integration check resolves the right libprotobuf
+        # (noble → libprotobuf32, jammy → libprotobuf23).
+        #   - jazzy  → Ubuntu 24.04 Noble, amd64 (the current target).
+        #   - humble → Ubuntu 22.04 Jammy, arm64 (robot_agent's Jetson links
+        #     against ros-humble-robotops-config; see ROB-325).
+        include:
+          - ros_distro: jazzy
+            os_version: noble
+            arch: amd64
+            runner: ubuntu-24.04
+            just_arch: x86_64
+          - ros_distro: humble
+            os_version: jammy
+            arch: arm64
+            runner: ubuntu-22.04-arm
+            just_arch: aarch64
     steps:
       - uses: actions/checkout@v4
 
       - name: Install just
         run: |
-          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp just
+          curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-${{ matrix.just_arch }}-unknown-linux-musl.tar.gz | tar xz -C /tmp just
           sudo mv /tmp/just /usr/local/bin/
 
       - name: Set up Docker Buildx
@@ -126,9 +149,11 @@ jobs:
           file: ./Dockerfile
           push: false
           load: true
-          tags: robotops-config:build
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          build-args: |
+            ROS_DISTRO=${{ matrix.ros_distro }}
+          tags: robotops-config:build-${{ matrix.ros_distro }}
+          cache-from: type=gha,scope=${{ matrix.ros_distro }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.ros_distro }}
 
       - name: Generate protobuf code
         run: just generate
@@ -138,14 +163,14 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/ws/src/robotops-config \
             -v ${{ github.workspace }}:/output \
-            robotops-config:build bash -c "
+            robotops-config:build-${{ matrix.ros_distro }} bash -c "
               cd /ws/src/robotops-config && \
               cp generated/ros2/package.xml . && \
               cp generated/ros2/CMakeLists.txt . && \
               mkdir -p cmake && cp generated/ros2/robotops-configConfig.cmake.in cmake/ && \
               apt-get update && \
               apt-get install -y dpkg-dev fakeroot debhelper && \
-              bloom-generate rosdebian --os-name ubuntu --os-version noble --ros-distro jazzy && \
+              bloom-generate rosdebian --os-name ubuntu --os-version ${{ matrix.os_version }} --ros-distro ${{ matrix.ros_distro }} && \
               dpkg-buildpackage -us -uc -b && \
               cp /ws/src/*.deb /output/
             "
@@ -153,7 +178,9 @@ jobs:
       - name: Find built package
         id: deb
         run: |
-          DEB_FILE=$(ls *.deb | head -n1)
+          # bloom names the deb ros-<distro>-robotops-config_<ver>_<arch>.deb,
+          # so the distro is already encoded; pick the matching one explicitly.
+          DEB_FILE=$(ls ros-${{ matrix.ros_distro }}-robotops-config_*_${{ matrix.arch }}.deb | head -n1)
           echo "file=$DEB_FILE" >> $GITHUB_OUTPUT
           echo "Built package: $DEB_FILE"
 
@@ -170,7 +197,7 @@ jobs:
           mkdir -p build && cd build
 
           # Configure with ROS2 prefix
-          cmake .. -DCMAKE_PREFIX_PATH=/opt/ros/jazzy
+          cmake .. -DCMAKE_PREFIX_PATH=/opt/ros/${{ matrix.ros_distro }}
 
           # Build the test
           cmake --build .
@@ -185,22 +212,22 @@ jobs:
           echo "Verifying installation..."
 
           # Verify library exists
-          test -f /opt/ros/jazzy/lib/librobotops-config.so || \
+          test -f /opt/ros/${{ matrix.ros_distro }}/lib/librobotops-config.so || \
             { echo "❌ Library not found"; exit 1; }
           echo "✓ Library found"
 
           # Verify headers exist
-          test -f /opt/ros/jazzy/include/robotops/config/v1/config.pb.h || \
+          test -f /opt/ros/${{ matrix.ros_distro }}/include/robotops/config/v1/config.pb.h || \
             { echo "❌ Headers not found"; exit 1; }
           echo "✓ Headers found"
 
           # Verify CMake config exists (ament location)
-          test -f /opt/ros/jazzy/share/robotops-config/cmake/robotops-configConfig.cmake || \
+          test -f /opt/ros/${{ matrix.ros_distro }}/share/robotops-config/cmake/robotops-configConfig.cmake || \
             { echo "❌ CMake config not found"; exit 1; }
           echo "✓ CMake config found"
 
           # Check library links to protobuf
-          ldd /opt/ros/jazzy/lib/librobotops-config.so | grep protobuf || \
+          ldd /opt/ros/${{ matrix.ros_distro }}/lib/librobotops-config.so | grep protobuf || \
             { echo "❌ Protobuf not linked"; exit 1; }
           echo "✓ Protobuf linked correctly"
 
