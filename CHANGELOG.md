@@ -7,15 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.7] - 2026-06-13
+
+### Changed
+
+- **ROS 2 Humble / Ubuntu 22.04 Jammy / arm64 Debian package** (ROB-325): the `Dockerfile` and the `ci.yml` / `release.yml` / `release-dev.yml` workflows are now parameterized by ROS distro instead of hardcoding Jazzy. The `Dockerfile` takes `--build-arg ROS_DISTRO` (`FROM ros:${ROS_DISTRO}`); the build matrices gained a `{ros_distro, os_version, arch}` dimension so a single build path produces both `ros-jazzy-robotops-config_*_{amd64,arm64}.deb` (Noble) and `ros-humble-robotops-config_*_arm64.deb` (Jammy) via `bloom-generate --os-version ${OS_VERSION} --ros-distro ${ROS_DISTRO}`. The `ci.yml` artifact checks (`librobotops-config.so`, CMake prefix, headers, protobuf `ldd`) now resolve under `/opt/ros/${ROS_DISTRO}`. The Humble deb links against Jammy's `libprotobuf23` (3.12.4) and publishes to the apt.robotops.com **jammy** channel (Jazzy → noble). robot_agent's Jetson (Orin Nano) Humble build links against this package.
+
 ## [0.9.6] - 2026-06-11
 
 ### Added
 
 - Add subscription gating policy and QoS defaults to `SubscriptionsConfig` for topic visibility and least-intrusive compatible subscriptions.
-
-### Changed
-
-- **ROS 2 Humble / Ubuntu 22.04 Jammy / arm64 Debian package** (ROB-325): the `Dockerfile` and the `ci.yml` / `release.yml` / `release-dev.yml` workflows are now parameterized by ROS distro instead of hardcoding Jazzy. The `Dockerfile` takes `--build-arg ROS_DISTRO` (`FROM ros:${ROS_DISTRO}`); the build matrices gained a `{ros_distro, os_version, arch}` dimension so a single build path produces both `ros-jazzy-robotops-config_*_{amd64,arm64}.deb` (Noble) and `ros-humble-robotops-config_*_arm64.deb` (Jammy) via `bloom-generate --os-version ${OS_VERSION} --ros-distro ${ROS_DISTRO}`. The `ci.yml` artifact checks (`librobotops-config.so`, CMake prefix, headers, protobuf `ldd`) now resolve under `/opt/ros/${ROS_DISTRO}`. The Humble deb links against Jammy's `libprotobuf23` (3.12.4) and publishes to the apt.robotops.com **jammy** channel (Jazzy → noble). robot_agent's Jetson (Orin Nano) Humble build links against this package.
 
 ## [0.9.5] - 2026-05-29
 
