@@ -1,17 +1,28 @@
 # Version management and code generation for robotops_config
 
+# ROS 2 distro that selects the build image (ros:${ROS_DISTRO}) and, with it,
+# the protoc/libprotobuf version used to generate the C++ protobuf sources.
+# This MUST match the distro the .deb is built/linked for, because buf's cpp
+# generator emits code targeting the build image's libprotobuf:
+#   - jazzy  → Ubuntu 24.04 Noble, libprotobuf 3.21.x (the default)
+#   - humble → Ubuntu 22.04 Jammy, libprotobuf 3.12.4
+# Generating with the wrong distro produces .pb.cc/.pb.h that won't compile
+# against the target distro's libprotobuf (see ROB-325). Override with:
+#   just ROS_DISTRO=humble generate
+ROS_DISTRO := "jazzy"
+
 # Lint proto files for style and correctness
 lint:
     @echo "Linting proto files..."
-    docker build -t robotops-config:build .
-    docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build bash -c "cd /ws/src/robotops-config && buf lint proto"
+    docker build -t robotops-config:build-{{ROS_DISTRO}} --build-arg ROS_DISTRO={{ROS_DISTRO}} .
+    docker run --rm -v $(pwd):/ws/src/robotops-config robotops-config:build-{{ROS_DISTRO}} bash -c "cd /ws/src/robotops-config && buf lint proto"
     @echo "✅ Proto linting passed"
 
 # Generate all code from proto schema (Rust, C++, YAML)
 generate:
-    @echo "Generating code from proto schema..."
-    docker build -t robotops-config:build .
-    docker run --rm -v $(pwd):/ws/src/robotops-config -u $(id -u):$(id -g) -e XDG_CACHE_HOME=/tmp/.cache robotops-config:build bash -c "cd /ws/src/robotops-config && buf generate"
+    @echo "Generating code from proto schema (ROS_DISTRO={{ROS_DISTRO}})..."
+    docker build -t robotops-config:build-{{ROS_DISTRO}} --build-arg ROS_DISTRO={{ROS_DISTRO}} .
+    docker run --rm -v $(pwd):/ws/src/robotops-config -u $(id -u):$(id -g) -e XDG_CACHE_HOME=/tmp/.cache robotops-config:build-{{ROS_DISTRO}} bash -c "cd /ws/src/robotops-config && buf generate"
     python3 tools/robotops-codegen/main.py
     @echo ""
     @echo "✅ Code generation complete"

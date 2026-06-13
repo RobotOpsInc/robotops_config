@@ -162,7 +162,9 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.ros_distro }}
 
       - name: Generate protobuf code
-        run: just generate
+        # Generate with the matrix distro's protoc/libprotobuf so the C++ .pb.cc
+        # matches the libprotobuf the .deb links against (ROB-325).
+        run: just ROS_DISTRO=${{ matrix.ros_distro }} generate
 
       - name: Build Debian package
         run: |
