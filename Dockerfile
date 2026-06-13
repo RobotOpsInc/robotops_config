@@ -1,8 +1,21 @@
-FROM ros:jazzy
+# Build environment for librobotops-config.so (the protobuf-backed C++ lib)
+# and its ROS 2 Debian package.
+#
+# Parameterized by ROS distro so a single Dockerfile builds for either
+# Jazzy (Ubuntu 24.04 Noble) or Humble (Ubuntu 22.04 Jammy, the arm64/Jetson
+# target). Pass --build-arg ROS_DISTRO=humble for the Humble build.
+#
+#   ROS_DISTRO  ROS 2 distribution (jazzy | humble). Selects the
+#               `ros:${ROS_DISTRO}` base image and /opt/ros/${ROS_DISTRO}.
+ARG ROS_DISTRO=jazzy
+FROM ros:${ROS_DISTRO}
+
+# Re-declare after FROM so the value is in scope in the build stage.
+ARG ROS_DISTRO
 
 # Set up environment
 ENV DEBIAN_FRONTEND=noninteractive
-ENV ROS_DISTRO=jazzy
+ENV ROS_DISTRO=${ROS_DISTRO}
 
 # Install all dependencies
 RUN apt-get update && apt-get install -y \
@@ -19,8 +32,12 @@ RUN apt-get update && apt-get install -y \
     python3-protobuf \
     && rm -rf /var/lib/apt/lists/*
 
-# Install bloom via pip (not available in Ubuntu 24.04 repos)
-RUN pip3 install --break-system-packages bloom
+# Install bloom via pip (not available in the Ubuntu apt repos).
+# Ubuntu 24.04 (Noble/Jazzy) ships a PEP 668 "externally managed" pip that
+# requires --break-system-packages; Ubuntu 22.04 (Jammy/Humble) does not have
+# that marker and its older pip does not understand the flag. Try the modern
+# invocation first and fall back so a single Dockerfile works on both.
+RUN pip3 install --break-system-packages bloom || pip3 install bloom
 
 # Update rosdep database
 RUN rosdep update
