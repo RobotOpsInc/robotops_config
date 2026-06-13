@@ -97,6 +97,17 @@ runs:
           echo "No existing repository found in S3"
         fi
 
+    # NOTE (ROB-325): this action publishes the SAME package set to every
+    # distribution (noble/jammy/focal) from a single aptly repo. With the Humble
+    # (jammy) build added alongside Jazzy (noble), each .deb still lands in all
+    # three dists. That is safe here because bloom stamps the Ubuntu codename
+    # into the version (ros-jazzy-* → <ver>-0noble, ros-humble-* → <ver>-0jammy)
+    # AND the package names differ (ros-jazzy-robotops-config vs
+    # ros-humble-robotops-config), so the two arm64 artifacts never collide in
+    # the pool. The ros-humble-* deb appearing in the noble dist is inert — it
+    # hard-depends on libprotobuf23 (Jammy) and won't install on Noble — but a
+    # future change should route each .deb to only its matching distribution
+    # (jazzy → noble, humble → jammy) keyed off the ros-<distro>-* package name.
     - name: Create or Update Repository
       shell: bash
       run: |
