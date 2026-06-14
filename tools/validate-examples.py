@@ -12,11 +12,14 @@ from pathlib import Path
 from google.protobuf import text_format
 from google.protobuf.json_format import ParseDict, ParseError
 
-# Add generated protobuf to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "generated" / "sdks" / "python"))
+# Add generated protobuf outputs to path. Older checkouts track Python output in
+# out/proto/, while `buf generate` writes it under generated/sdks/python/.
+repo_root = Path(__file__).parent.parent
+sys.path.insert(0, str(repo_root / "generated" / "sdks" / "python"))
+sys.path.insert(0, str(repo_root / "out" / "proto"))
 
 try:
-    from proto.robotops.config.v1 import config_pb2
+    from robotops.config.v1 import config_pb2  # type: ignore[reportMissingImports]
 except ImportError:
     print("Error: Could not import generated protobuf types.")
     print("Run 'just generate' first to generate Python protobuf code.")
