@@ -13,7 +13,6 @@ from pathlib import Path
 import yaml
 from google.protobuf.json_format import ParseDict, ParseError
 
-
 repo_root = Path(__file__).parent.parent
 
 
@@ -94,7 +93,6 @@ def validate_yaml_file(yaml_path: Path) -> bool:
 
 def main():
     """Validate all example YAML files."""
-    repo_root = Path(__file__).parent.parent
     examples_dir = repo_root / "examples"
 
     if not examples_dir.exists():
