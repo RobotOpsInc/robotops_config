@@ -211,7 +211,7 @@ validate-examples:
     set -euo pipefail
 
     # Check if generated Python protobuf exists
-    if [ ! -f "generated/sdks/python/robotops/config/v1/config_pb2.py" ]; then
+    if [ ! -f "generated/sdks/python/robotops/config/v1/config_pb2.py" ] && [ ! -f "out/proto/robotops/config/v1/config_pb2.py" ]; then
         echo "Error: Python protobuf files not found. Run 'just generate' first."
         exit 1
     fi
