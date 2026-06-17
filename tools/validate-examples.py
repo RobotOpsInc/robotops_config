@@ -6,21 +6,40 @@ This script ensures example configurations conform to the protobuf schema
 by attempting to parse them into the generated protobuf message types.
 """
 
+import importlib.util
 import sys
-import yaml
 from pathlib import Path
-from google.protobuf import text_format
+
+import yaml
 from google.protobuf.json_format import ParseDict, ParseError
 
-# Add generated protobuf to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "generated" / "sdks" / "python"))
 
-try:
-    from proto.robotops.config.v1 import config_pb2
-except ImportError:
+repo_root = Path(__file__).parent.parent
+
+
+def load_config_pb2():
+    """Load the generated Config protobuf module from whichever output exists."""
+    candidates = [
+        repo_root / "generated" / "sdks" / "python" / "robotops" / "config" / "v1" / "config_pb2.py",
+        repo_root / "out" / "proto" / "robotops" / "config" / "v1" / "config_pb2.py",
+    ]
+
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("robotops_config_pb2", candidate)
+        if spec is None or spec.loader is None:
+            continue
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
     print("Error: Could not import generated protobuf types.")
     print("Run 'just generate' first to generate Python protobuf code.")
     sys.exit(1)
+
+
+config_pb2 = load_config_pb2()
 
 
 def snake_to_camel(snake_str: str) -> str:
