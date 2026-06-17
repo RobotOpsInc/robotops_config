@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.8] - 2026-06-16
+
+### Changed
+
+- **ROS 2 Humble / Ubuntu 22.04 Jammy / amd64 Debian package** (ROB-402): added an `amd64` row to the Humble/jammy `build-packages` matrix in `release.yml`, mirroring the existing humble/arm64 row, so `ros-humble-robotops-config` is now published for amd64 in addition to arm64. No schema changes; version bumped to gate the release.
+
 ## [0.9.7] - 2026-06-13
 
 ### Changed
