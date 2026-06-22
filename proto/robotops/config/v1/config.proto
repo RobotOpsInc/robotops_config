@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.9.8"
+  // @default "0.9.9"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -135,7 +135,7 @@ message AuthConfig {
 // RobotOps backend endpoint and retry configuration.
 message BackendConfig {
   // Backend gRPC endpoint URL.
-  // @default "https://api.robotops.com"
+  // @default "https://backend.robotops.com"
   // @env ROBOT_OPS_AGENT_BACKEND_URL
   string url = 1;
 

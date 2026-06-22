@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [0.9.9] - 2026-06-21
+
+### Changed
+
+- **Backend default endpoint → `https://backend.robotops.com`** (was `https://api.robotops.com`). `backend.robotops.com` is the canonical production endpoint (infra prod DNS + go-backend prod k8s ingress); `api.robotops.com` was stale. Agents that don't override `ROBOT_OPS_AGENT_BACKEND_URL` now resolve to the correct host. Schema-only change; version bumped to gate the release. Part of the cross-repo backend-URL reconciliation (RobotOpsInc/web_app#204).
+
 ## [0.9.8] - 2026-06-16
 
 ### Changed
