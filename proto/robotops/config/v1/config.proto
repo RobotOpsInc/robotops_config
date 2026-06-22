@@ -135,7 +135,7 @@ message AuthConfig {
 // RobotOps backend endpoint and retry configuration.
 message BackendConfig {
   // Backend gRPC endpoint URL.
-  // @default "https://api.robotops.com"
+  // @default "https://backend.robotops.com"
   // @env ROBOT_OPS_AGENT_BACKEND_URL
   string url = 1;
 
