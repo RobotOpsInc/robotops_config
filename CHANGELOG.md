@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Versions below this line -->
 
+## [Unreleased]
+
+### Added
+
+- `RecorderFlushConfig`: black-box flush-as-sampling policy fields (ROB-408 / WS-3):
+  `flush_on_failure` (default `true`), `baseline_per_op` (default `1`),
+  `sample_rate` (default `0.0`), `flush_on_demand` (default `true`), and the
+  always-enforced `max_per_hour` quota (default `60`). The recorder no longer
+  flushes only on aborted actions: any failed trace fires a flush, one recent
+  successful recording is kept per operation, and a rolling-hour cap guards disk
+  and upload bandwidth.
+
+### Changed
+
+- `SubscriptionsConfig.default_strategy`: documented that it only tunes the
+  structured always-on sink and is NOT authoritative for sink selection. The
+  subscription gating policy wins; heavy sensor types (Image / PointCloud2) are
+  gated to `record_only` (ring buffer only) regardless of `default_strategy:
+  adaptive` (ROB-408 / WS-3).
+
 ## [0.9.9] - 2026-06-21
 
 ### Changed
