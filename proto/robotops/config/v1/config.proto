@@ -11,7 +11,7 @@ package robotops.config.v1;
 message Config {
   // Schema version for configuration compatibility checking.
   // Components validate that the major version matches their supported version.
-  // @default "0.9.9"
+  // @default "0.10.0"
   string schema_version = 1;
 
   // Robot identity and fleet organization.
@@ -417,6 +417,16 @@ message MetricsConfig {
 // Message capture strategies configuration.
 message SubscriptionsConfig {
   // Default capture strategy (plug-and-play behavior).
+  //
+  // NOTE (ROB-408 / WS-3): `default_strategy` governs how the *structured*
+  // always-on store rate-limits a subscribed topic. It does NOT decide whether
+  // a topic gets a DDS reader or which sinks it feeds — that is the
+  // subscription gating *policy* (the agent's TopicPolicy classifier), which
+  // wins. In particular, heavy sensor types (Image / PointCloud2) are gated to
+  // `record_only` by the policy and feed the ring buffer only, regardless of
+  // `default_strategy: adaptive` (which would otherwise imply camera
+  // downsampling). The policy gate is authoritative for sink selection;
+  // `default_strategy` only tunes the structured sink for topics that have one.
   // @default "adaptive"
   // @enum adaptive
   // @enum all
@@ -1012,4 +1022,45 @@ message RecorderFlushConfig {
   // @default 5000
   // @min 1
   int32 max_disk_mb = 5;
+
+  // -------------------------------------------------------------------------
+  // Flush-as-sampling policy (ROB-408 / WS-3).
+  //
+  // The black box recorder no longer flushes only on aborted actions. The
+  // policy below turns "when do we materialize a ring-buffer recording?" into
+  // a sampling decision so that a healthy run, a logical-failure run, and an
+  // on-demand pull all have a defined, capped behavior.
+  // -------------------------------------------------------------------------
+
+  // Flush whenever a trace is marked failed. WS-2/ROB-407 will broaden the
+  // definition of "failed" beyond an aborted action; today the agent fires on
+  // GoalStatus::Aborted but the trigger source is pluggable.
+  // @default true
+  bool flush_on_failure = 6;
+
+  // Keep this many recent SUCCESSFUL recordings per operation (deduped by
+  // operation/action name; a newer success replaces the stale one). 0 disables
+  // the success baseline. 1 keeps a single "known-good" replay per operation.
+  // @default 1
+  // @min 0
+  int32 baseline_per_op = 7;
+
+  // Probabilistic sampling rate (0.0-1.0) for non-failure, non-baseline
+  // traces. 0 = never sample healthy traces beyond the baseline; 1.0 = always.
+  // @default 0.0
+  // @min 0.0
+  // @max 1.0
+  double sample_rate = 8;
+
+  // Allow on-demand (operator/API-triggered) flushes of the current ring
+  // buffer independent of failure/baseline/sample decisions.
+  // @default true
+  bool flush_on_demand = 9;
+
+  // Always-enforced guardrail: maximum number of flushes materialized per
+  // rolling hour across ALL trigger sources (failure, baseline, sample,
+  // on-demand). Protects disk and upload bandwidth from a flapping action.
+  // @default 60
+  // @min 1
+  int32 max_per_hour = 10;
 }
